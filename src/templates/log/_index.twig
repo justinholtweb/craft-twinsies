@@ -1,0 +1,115 @@
+{% extends '_layouts/cp' %}
+
+{% set title = 'Twinfield log'|t('twinsies') %}
+{% set selectedSubnavItem = 'log' %}
+
+{% set crumbs = [
+    { label: 'Twinsies'|t('twinsies'), url: url('twinsies') }
+] %}
+
+{% block actionButton %}
+    {% if currentUser.admin %}
+        <div class="buttons">
+            <button type="button" class="btn" id="twinsies-prune">{{ 'Prune old entries'|t('twinsies') }}</button>
+            <button type="button" class="btn" id="twinsies-clear">{{ 'Clear log'|t('twinsies') }}</button>
+            <span class="spinner hidden" id="twinsies-spinner"></span>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <nav class="pagination" style="margin-bottom: 14px;">
+        {% for value, label in { '': 'All'|t('twinsies'), 'error': 'Errors'|t('twinsies'), 'warning': 'Warnings'|t('twinsies') } %}
+            <a class="btn small {{ (criteria.level ?? '') == value ? 'active' : '' }}"
+               href="{{ url('twinsies/log', value ? { level: value } : {}) }}">{{ label }}</a>
+        {% endfor %}
+
+        {% if actions|length %}
+            <select class="btn small" id="twinsies-action-filter" style="margin-left: 8px;">
+                <option value="">{{ 'Every action'|t('twinsies') }}</option>
+                {% for action in actions %}
+                    <option value="{{ action }}" {{ (criteria.action ?? '') == action ? 'selected' : '' }}>{{ action }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+    </nav>
+
+    {% if entries|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th style="width: 160px;">{{ 'When'|t('twinsies') }}</th>
+                    <th style="width: 150px;">{{ 'Action'|t('twinsies') }}</th>
+                    <th>{{ 'Summary'|t('twinsies') }}</th>
+                    <th style="width: 90px;" class="rightalign">{{ 'Took'|t('twinsies') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                    <tr>
+                        <td>{{ entry.dateCreated ? entry.dateCreated|datetime('short') : '' }}</td>
+                        <td class="code">{{ entry.action }}</td>
+                        <td>
+                            <span class="status {{ entry.getStatusColour() }}"></span>
+                            <a href="{{ url('twinsies/log/' ~ entry.id) }}">{{ entry.summary ?: entry.level }}</a>
+                        </td>
+                        <td class="rightalign light">{{ entry.getDurationLabel() }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% set pages = (total / pageSize)|round(0, 'ceil') %}
+        {% if pages > 1 %}
+            <nav class="pagination" style="margin-top: 14px;">
+                {% if page > 1 %}
+                    <a class="btn" href="{{ url('twinsies/log', criteria|merge({ page: page - 1 })) }}">{{ '← Previous'|t('twinsies') }}</a>
+                {% endif %}
+                <span class="light">{{ 'Page {page} of {pages}'|t('twinsies', { page: page, pages: pages }) }}</span>
+                {% if page < pages %}
+                    <a class="btn" href="{{ url('twinsies/log', criteria|merge({ page: page + 1 })) }}">{{ 'Next →'|t('twinsies') }}</a>
+                {% endif %}
+            </nav>
+        {% endif %}
+    {% else %}
+        <div class="zilch">
+            <p>{{ 'Nothing logged yet.'|t('twinsies') }}</p>
+        </div>
+    {% endif %}
+
+    {% js %}
+    (function() {
+        var spinner = document.getElementById('twinsies-spinner');
+        function busy(on) { if (spinner) { spinner.classList.toggle('hidden', !on); } }
+
+        function post(action, confirmText) {
+            if (confirmText && !confirm(confirmText)) { return; }
+            busy(true);
+            Craft.sendActionRequest('POST', action)
+                .then(function() { window.location.reload(); })
+                .catch(function() { Craft.cp.displayError({{ 'Something went wrong.'|t('twinsies')|json_encode|raw }}); })
+                .finally(function() { busy(false); });
+        }
+
+        var prune = document.getElementById('twinsies-prune');
+        if (prune) {
+            prune.addEventListener('click', function() { post('twinsies/log/prune'); });
+        }
+
+        var clear = document.getElementById('twinsies-clear');
+        if (clear) {
+            clear.addEventListener('click', function() {
+                post('twinsies/log/clear', {{ 'Delete every log entry?'|t('twinsies')|json_encode|raw }});
+            });
+        }
+
+        var filter = document.getElementById('twinsies-action-filter');
+        if (filter) {
+            filter.addEventListener('change', function() {
+                var base = {{ url('twinsies/log')|json_encode|raw }};
+                window.location.href = filter.value ? base + '?action=' + encodeURIComponent(filter.value) : base;
+            });
+        }
+    })();
+    {% endjs %}
+{% endblock %}

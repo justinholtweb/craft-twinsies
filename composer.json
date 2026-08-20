@@ -1,0 +1,57 @@
+{
+    "name": "justinholtweb/craft-twinsies",
+    "description": "Twinfield integration for Craft Commerce — post orders as sales invoices or journal transactions, sync customers and articles, pull payment status back, and credit refunds.",
+    "version": "5.0.0",
+    "type": "craft-plugin",
+    "keywords": [
+        "craftcms",
+        "craft-plugin",
+        "craft-commerce",
+        "commerce",
+        "twinfield",
+        "accounting",
+        "boekhouding",
+        "invoicing",
+        "netherlands"
+    ],
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "Justin Holt",
+            "homepage": "https://justinholt.com"
+        }
+    ],
+    "support": {
+        "email": "justin@justinholt.com"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*",
+        "ext-dom": "*",
+        "ext-libxml": "*",
+        "craftcms/cms": "^5.3.0",
+        "craftcms/commerce": "^5.0.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "justinholtweb\\twinsies\\": "src/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "craftcms/plugin-installer": true,
+            "yiisoft/yii2-composer": true
+        }
+    },
+    "extra": {
+        "name": "Twinsies",
+        "handle": "twinsies",
+        "developer": "Justin Holt",
+        "developerUrl": "https://justinholt.com",
+        "documentationUrl": "https://github.com/justinholtweb/craft-twinsies/blob/main/README.md",
+        "changelogUrl": "https://raw.githubusercontent.com/justinholtweb/craft-twinsies/main/CHANGELOG.md",
+        "class": "justinholtweb\\twinsies\\Plugin"
+    }
+}

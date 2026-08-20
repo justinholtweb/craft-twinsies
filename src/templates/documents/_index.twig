@@ -1,0 +1,143 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set title = 'Twinfield documents'|t('twinsies') %}
+{% set selectedSubnavItem = 'documents' %}
+
+{% set crumbs = [
+    { label: 'Twinsies'|t('twinsies'), url: url('twinsies') }
+] %}
+
+{% block actionButton %}
+    {% if canPush %}
+        <div class="buttons">
+            <button type="button" class="btn" id="twinsies-backfill">{{ 'Post unposted orders'|t('twinsies') }}</button>
+            {% if counts.failed > 0 %}
+                <button type="button" class="btn submit" id="twinsies-retry">
+                    {{ 'Retry {count} failed'|t('twinsies', { count: counts.failed }) }}
+                </button>
+            {% endif %}
+            <span class="spinner hidden" id="twinsies-spinner"></span>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <div class="tableview">
+        <nav class="pagination" style="margin-bottom: 14px;">
+            {% set filters = {
+                '': 'All'|t('twinsies'),
+                'sent': 'Posted'|t('twinsies'),
+                'failed': 'Failed'|t('twinsies'),
+                'queued': 'Queued'|t('twinsies'),
+                'pending': 'Pending'|t('twinsies'),
+                'skipped': 'Skipped'|t('twinsies')
+            } %}
+            {% for value, label in filters %}
+                {% set active = (criteria.status ?? '') == value %}
+                <a class="btn small {{ active ? 'active' : '' }}"
+                   href="{{ url('twinsies/documents', value ? { status: value } : {}) }}">
+                    {{ label }}{% if value and counts[value] is defined %} ({{ counts[value] }}){% endif %}
+                </a>
+            {% endfor %}
+        </nav>
+
+        {% if documents|length %}
+            <table class="data fullwidth">
+                <thead>
+                    <tr>
+                        <th>{{ 'Order'|t('twinsies') }}</th>
+                        <th>{{ 'Kind'|t('twinsies') }}</th>
+                        <th>{{ 'Twinfield'|t('twinsies') }}</th>
+                        <th>{{ 'Debtor'|t('twinsies') }}</th>
+                        <th class="rightalign">{{ 'Total'|t('twinsies') }}</th>
+                        <th class="rightalign">{{ 'Open'|t('twinsies') }}</th>
+                        <th>{{ 'Status'|t('twinsies') }}</th>
+                        <th>{{ 'Posted'|t('twinsies') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for document in documents %}
+                        {% set order = document.getOrder() %}
+                        <tr>
+                            <td>
+                                <a href="{{ url('twinsies/documents/' ~ document.id) }}">
+                                    {{ order ? order.reference : '#' ~ document.orderId }}
+                                </a>
+                            </td>
+                            <td>{{ document.isCreditNote() ? 'Credit note'|t('twinsies') : 'Invoice'|t('twinsies') }}</td>
+                            <td class="code">{{ document.getReference() ?: '—' }}</td>
+                            <td class="code">{{ document.customerCode ?: '—' }}</td>
+                            <td class="rightalign">{{ document.valueTotal is not null ? document.valueTotal|number_format(2) : '—' }}</td>
+                            <td class="rightalign">{{ document.openValue is not null ? document.openValue|number_format(2) : '—' }}</td>
+                            <td>
+                                <span class="status {{ document.getStatusColour() }}"></span>
+                                {{ document.getStatusLabel() }}
+                            </td>
+                            <td>{{ document.datePosted ? document.datePosted|datetime('short') : '—' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% set pages = (total / pageSize)|round(0, 'ceil') %}
+            {% if pages > 1 %}
+                <nav class="pagination" style="margin-top: 14px;">
+                    {% if page > 1 %}
+                        <a class="btn" href="{{ url('twinsies/documents', criteria|merge({ page: page - 1 })) }}">{{ '← Previous'|t('twinsies') }}</a>
+                    {% endif %}
+                    <span class="light">{{ 'Page {page} of {pages}'|t('twinsies', { page: page, pages: pages }) }}</span>
+                    {% if page < pages %}
+                        <a class="btn" href="{{ url('twinsies/documents', criteria|merge({ page: page + 1 })) }}">{{ 'Next →'|t('twinsies') }}</a>
+                    {% endif %}
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="zilch">
+                <p>{{ 'Nothing here yet.'|t('twinsies') }}</p>
+                {% if not settings.getOffice() %}
+                    <p class="light">
+                        {{ 'No Twinfield office is configured — start on the [settings screen]({url}).'|t('twinsies', { url: url('settings/plugins/twinsies') })|md(inlineOnly=true) }}
+                    </p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    {% js %}
+    (function() {
+        var spinner = document.getElementById('twinsies-spinner');
+        function busy(on) { if (spinner) { spinner.classList.toggle('hidden', !on); } }
+
+        function post(action, data, confirmText) {
+            if (confirmText && !confirm(confirmText)) { return; }
+            busy(true);
+            Craft.sendActionRequest('POST', action, { data: data || {} })
+                .then(function(response) {
+                    var payload = response.data || {};
+                    if (payload.success) {
+                        Craft.cp.displayNotice(payload.message);
+                        window.location.reload();
+                    } else {
+                        Craft.cp.displayError(payload.message);
+                    }
+                })
+                .catch(function() { Craft.cp.displayError({{ 'Something went wrong.'|t('twinsies')|json_encode|raw }}); })
+                .finally(function() { busy(false); });
+        }
+
+        var backfill = document.getElementById('twinsies-backfill');
+        if (backfill) {
+            backfill.addEventListener('click', function() {
+                post('twinsies/documents/backfill', { limit: 50 },
+                    {{ 'Queue the next 50 completed orders that have not been posted?'|t('twinsies')|json_encode|raw }});
+            });
+        }
+
+        var retry = document.getElementById('twinsies-retry');
+        if (retry) {
+            retry.addEventListener('click', function() { post('twinsies/documents/retry-failed'); });
+        }
+    })();
+    {% endjs %}
+{% endblock %}

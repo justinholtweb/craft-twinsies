@@ -1,0 +1,68 @@
+{% extends '_layouts/cp' %}
+
+{% set title = entry.action %}
+{% set selectedSubnavItem = 'log' %}
+
+{% set crumbs = [
+    { label: 'Twinsies'|t('twinsies'), url: url('twinsies') },
+    { label: 'Log'|t('twinsies'), url: url('twinsies/log') }
+] %}
+
+{% block content %}
+    <div class="pane">
+        <table class="data fullwidth">
+            <tbody>
+                <tr>
+                    <th style="width: 180px;">{{ 'When'|t('twinsies') }}</th>
+                    <td>{{ entry.dateCreated ? entry.dateCreated|datetime('long') : '—' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ 'Level'|t('twinsies') }}</th>
+                    <td><span class="status {{ entry.getStatusColour() }}"></span> {{ entry.level }}</td>
+                </tr>
+                <tr>
+                    <th>{{ 'HTTP status'|t('twinsies') }}</th>
+                    <td>{{ entry.statusCode ?: '—' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ 'Took'|t('twinsies') }}</th>
+                    <td>{{ entry.getDurationLabel() }}</td>
+                </tr>
+                <tr>
+                    <th>{{ 'Summary'|t('twinsies') }}</th>
+                    <td>{{ entry.summary ?: '—' }}</td>
+                </tr>
+                {% if entry.documentId %}
+                    <tr>
+                        <th>{{ 'Document'|t('twinsies') }}</th>
+                        <td><a href="{{ url('twinsies/documents/' ~ entry.documentId) }}">#{{ entry.documentId }}</a></td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+        {% if entry.message %}
+            <p style="margin-top: 14px;">{{ entry.message }}</p>
+        {% endif %}
+    </div>
+
+    {% if request %}
+        <h2>{{ 'Request'|t('twinsies') }}</h2>
+        <div class="pane">
+            <pre style="max-height: 40vh; overflow: auto; white-space: pre-wrap;">{{ request }}</pre>
+        </div>
+    {% endif %}
+
+    {% if response %}
+        <h2>{{ 'Response'|t('twinsies') }}</h2>
+        <div class="pane">
+            <pre style="max-height: 40vh; overflow: auto; white-space: pre-wrap;">{{ response }}</pre>
+        </div>
+    {% endif %}
+
+    {% if not request and not response %}
+        <p class="light">
+            {{ 'No payloads were stored for this entry — either logging payloads is switched off, or this entry did not have any.'|t('twinsies') }}
+        </p>
+    {% endif %}
+{% endblock %}

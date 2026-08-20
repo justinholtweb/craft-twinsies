@@ -1,0 +1,207 @@
+{% extends '_layouts/cp' %}
+
+{% set title = document.getReference() ?: 'Document #' ~ document.id %}
+{% set selectedSubnavItem = 'documents' %}
+
+{% set crumbs = [
+    { label: 'Twinsies'|t('twinsies'), url: url('twinsies') },
+    { label: 'Documents'|t('twinsies'), url: url('twinsies/documents') }
+] %}
+
+{% block content %}
+    <div class="pane">
+        <table class="data fullwidth">
+            <tbody>
+                <tr>
+                    <th style="width: 200px;">{{ 'Status'|t('twinsies') }}</th>
+                    <td>
+                        <span class="status {{ document.getStatusColour() }}"></span>
+                        {{ document.getStatusLabel() }}
+                        {% if document.attempts %}
+                            <span class="light">— {{ '{n} attempt(s)'|t('twinsies', { n: document.attempts }) }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>{{ 'Order'|t('twinsies') }}</th>
+                    <td>
+                        {% if order %}
+                            <a href="{{ order.getCpEditUrl() }}">{{ order.reference }}</a>
+                        {% else %}
+                            <span class="light">{{ 'Deleted'|t('twinsies') }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>{{ 'Kind'|t('twinsies') }}</th>
+                    <td>{{ document.isCreditNote() ? 'Credit note'|t('twinsies') : 'Invoice'|t('twinsies') }}</td>
+                </tr>
+                <tr>
+                    <th>{{ 'Mode'|t('twinsies') }}</th>
+                    <td>{{ document.mode == 'transaction' ? 'Journal transaction'|t('twinsies') : 'Sales invoice'|t('twinsies') }}</td>
+                </tr>
+                <tr>
+                    <th>{{ 'Office'|t('twinsies') }}</th>
+                    <td class="code">{{ document.office ?: '—' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ document.mode == 'transaction' ? 'Daybook'|t('twinsies') : 'Invoice type'|t('twinsies') }}</th>
+                    <td class="code">{{ document.bookCode ?: '—' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ 'Invoice number'|t('twinsies') }}</th>
+                    <td class="code">{{ document.invoiceNumber ?: '—' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ 'Financial transaction'|t('twinsies') }}</th>
+                    <td class="code">
+                        {% if document.hasFinancials() %}
+                            {{ document.transactionCode }} {{ document.transactionNumber }}
+                        {% else %}
+                            <span class="light">
+                                {{ 'Not booked yet — a concept invoice or provisional transaction is not a financial transaction.'|t('twinsies') }}
+                            </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>{{ 'Debtor'|t('twinsies') }}</th>
+                    <td class="code">{{ document.customerCode ?: '—' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ 'Total'|t('twinsies') }}</th>
+                    <td>{{ document.valueTotal is not null ? document.valueTotal|number_format(2) ~ ' ' ~ document.currency : '—' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ 'Open value'|t('twinsies') }}</th>
+                    <td>
+                        {{ document.openValue is not null ? document.openValue|number_format(2) : '—' }}
+                        {% if document.matchStatus %}
+                            <span class="light">({{ document.matchStatus }})</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>{{ 'Posted'|t('twinsies') }}</th>
+                    <td>{{ document.datePosted ? document.datePosted|datetime('short') : '—' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ 'Paid'|t('twinsies') }}</th>
+                    <td>{{ document.datePaid ? document.datePaid|datetime('short') : '—' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ 'Last checked'|t('twinsies') }}</th>
+                    <td>{{ document.dateReconciled ? document.dateReconciled|datetime('short') : '—' }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        {% if document.lastError %}
+            <p class="error" style="margin-top: 14px;">{{ document.lastError }}</p>
+        {% endif %}
+    </div>
+
+    {% if canPush %}
+        <div class="buttons">
+            <button type="button" class="btn" id="twinsies-preview">{{ 'Preview XML'|t('twinsies') }}</button>
+            <button type="button" class="btn submit" id="twinsies-push"
+                    {% if document.isSent() %}data-force="1"{% endif %}>
+                {{ document.isSent() ? 'Post again'|t('twinsies') : 'Post now'|t('twinsies') }}
+            </button>
+            <button type="button" class="btn" id="twinsies-forget">{{ 'Forget this record'|t('twinsies') }}</button>
+            <span class="spinner hidden" id="twinsies-spinner"></span>
+        </div>
+        <p class="light">
+            {{ 'Forgetting a record only removes Twinsies’ copy. Nothing in Twinfield is changed — it cannot be, and pretending otherwise would be worse than not offering it.'|t('twinsies') }}
+        </p>
+    {% endif %}
+
+    <h2 style="margin-top: 24px;">{{ 'Log'|t('twinsies') }}</h2>
+
+    {% if entries|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th>{{ 'When'|t('twinsies') }}</th>
+                    <th>{{ 'Action'|t('twinsies') }}</th>
+                    <th>{{ 'Summary'|t('twinsies') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                    <tr>
+                        <td>{{ entry.dateCreated ? entry.dateCreated|datetime('short') : '' }}</td>
+                        <td class="code">{{ entry.action }}</td>
+                        <td>
+                            <span class="status {{ entry.getStatusColour() }}"></span>
+                            <a href="{{ url('twinsies/log/' ~ entry.id) }}">{{ entry.summary ?: entry.level }}</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="light">{{ 'No log entries for this document.'|t('twinsies') }}</p>
+    {% endif %}
+
+    {% js %}
+    (function() {
+        var spinner = document.getElementById('twinsies-spinner');
+        function busy(on) { if (spinner) { spinner.classList.toggle('hidden', !on); } }
+
+        var pushBtn = document.getElementById('twinsies-push');
+        if (pushBtn) {
+            pushBtn.addEventListener('click', function() {
+                var force = pushBtn.getAttribute('data-force') === '1';
+                if (force && !confirm({{ 'Twinfield will create a second document rather than replacing the first. Continue?'|t('twinsies')|json_encode|raw }})) {
+                    return;
+                }
+                busy(true);
+                Craft.sendActionRequest('POST', 'twinsies/documents/push', {
+                    data: { documentId: {{ document.id }}, force: force ? 1 : 0 }
+                }).then(function(response) {
+                    var data = response.data || {};
+                    data.success ? Craft.cp.displayNotice(data.message) : Craft.cp.displayError(data.message);
+                    if (data.success) { window.location.reload(); }
+                }).catch(function() {
+                    Craft.cp.displayError({{ 'Could not post the document.'|t('twinsies')|json_encode|raw }});
+                }).finally(function() { busy(false); });
+            });
+        }
+
+        var previewBtn = document.getElementById('twinsies-preview');
+        if (previewBtn) {
+            previewBtn.addEventListener('click', function() {
+                busy(true);
+                Craft.sendActionRequest('POST', 'twinsies/documents/preview', {
+                    data: { orderId: {{ document.orderId ?? 0 }}, kind: {{ document.kind|json_encode|raw }} }
+                }).then(function(response) {
+                    var data = response.data || {};
+                    if (!data.ok) { Craft.cp.displayError(data.message); return; }
+                    var hud = document.createElement('div');
+                    hud.innerHTML = (data.warnings || []).map(function(w) {
+                        return '<p class="warning">' + Craft.escapeHtml(w) + '</p>';
+                    }).join('') + '<pre style="max-height:60vh;overflow:auto;white-space:pre-wrap;">'
+                        + Craft.escapeHtml(data.xml) + '</pre>';
+                    new Garnish.HUD(previewBtn, hud);
+                }).catch(function() {
+                    Craft.cp.displayError({{ 'Could not build a preview.'|t('twinsies')|json_encode|raw }});
+                }).finally(function() { busy(false); });
+            });
+        }
+
+        var forgetBtn = document.getElementById('twinsies-forget');
+        if (forgetBtn) {
+            forgetBtn.addEventListener('click', function() {
+                if (!confirm({{ 'Remove Twinsies’ record of this document?'|t('twinsies')|json_encode|raw }})) { return; }
+                busy(true);
+                Craft.sendActionRequest('POST', 'twinsies/documents/delete', {
+                    data: { documentId: {{ document.id }} }
+                }).then(function() {
+                    window.location.href = {{ url('twinsies/documents')|json_encode|raw }};
+                }).finally(function() { busy(false); });
+            });
+        }
+    })();
+    {% endjs %}
+{% endblock %}

@@ -1,0 +1,124 @@
+{# Rendered into Commerce's own order edit screen through the `cp.commerce.order.edit.details`
+   hook. Everything posts with Craft.sendActionRequest rather than a form: this markup lands
+   inside Commerce's form, and a nested <form> is silently dropped by the browser. #}
+{% set invoice = null %}
+{% set credits = [] %}
+{% for document in documents %}
+    {% if document.kind == 'creditnote' %}
+        {% set credits = credits|merge([document]) %}
+    {% else %}
+        {% set invoice = document %}
+    {% endif %}
+{% endfor %}
+
+<div class="meta twinsies-panel">
+    <div class="data">
+        <h5 class="heading">{{ 'Twinfield'|t('twinsies') }}</h5>
+        <div class="value">
+            {% if invoice %}
+                <p>
+                    <span class="status {{ invoice.getStatusColour() }}"></span>
+                    <a href="{{ url('twinsies/documents/' ~ invoice.id) }}">{{ invoice.getStatusLabel() }}</a>
+                    {% if invoice.getReference() %}
+                        <span class="light">— {{ invoice.getReference() }}</span>
+                    {% endif %}
+                </p>
+
+                {% if invoice.openValue is not null and not invoice.isPaid() %}
+                    <p class="light">{{ 'Open: {value}'|t('twinsies', { value: invoice.openValue|number_format(2) }) }}</p>
+                {% endif %}
+
+                {% if invoice.lastError %}
+                    <p class="error">{{ invoice.lastError }}</p>
+                {% endif %}
+            {% else %}
+                <p class="light">{{ 'Not posted yet.'|t('twinsies') }}</p>
+            {% endif %}
+
+            {% for credit in credits %}
+                <p>
+                    <span class="status {{ credit.getStatusColour() }}"></span>
+                    <a href="{{ url('twinsies/documents/' ~ credit.id) }}">{{ 'Credit note'|t('twinsies') }}</a>
+                    <span class="light">{{ credit.valueTotal ? credit.valueTotal|number_format(2) : '' }}</span>
+                </p>
+            {% endfor %}
+
+            <div class="buttons" style="margin-top: 10px;">
+                <button type="button" class="btn small" data-twinsies-preview="{{ order.id }}">
+                    {{ 'Preview XML'|t('twinsies') }}
+                </button>
+                {% if canPush %}
+                    <button type="button" class="btn small submit" data-twinsies-push="{{ order.id }}"
+                            {% if invoice and invoice.isSent() %}data-twinsies-force="1"{% endif %}>
+                        {{ invoice and invoice.isSent() ? 'Post again'|t('twinsies') : 'Post to Twinfield'|t('twinsies') }}
+                    </button>
+                {% endif %}
+                <span class="spinner hidden" data-twinsies-spinner></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% js %}
+(function() {
+    var panel = document.querySelector('.twinsies-panel');
+    if (!panel) { return; }
+
+    var spinner = panel.querySelector('[data-twinsies-spinner]');
+    function busy(on) { if (spinner) { spinner.classList.toggle('hidden', !on); } }
+
+    var previewBtn = panel.querySelector('[data-twinsies-preview]');
+    if (previewBtn) {
+        previewBtn.addEventListener('click', function() {
+            busy(true);
+            Craft.sendActionRequest('POST', 'twinsies/documents/preview', {
+                data: { orderId: previewBtn.getAttribute('data-twinsies-preview') }
+            }).then(function(response) {
+                var data = response.data || {};
+                if (!data.ok) {
+                    Craft.cp.displayError(data.message);
+                    return;
+                }
+                var hud = document.createElement('div');
+                var warnings = (data.warnings || []).map(function(w) {
+                    return '<p class="warning">' + Craft.escapeHtml(w) + '</p>';
+                }).join('');
+                hud.innerHTML = warnings + '<pre style="max-height:60vh;overflow:auto;white-space:pre-wrap;">'
+                    + Craft.escapeHtml(data.xml) + '</pre>';
+                new Garnish.HUD(previewBtn, hud, { hudClass: 'hud twinsies-hud' });
+            }).catch(function() {
+                Craft.cp.displayError({{ 'Could not build a preview.'|t('twinsies')|json_encode|raw }});
+            }).finally(function() { busy(false); });
+        });
+    }
+
+    var pushBtn = panel.querySelector('[data-twinsies-push]');
+    if (pushBtn) {
+        pushBtn.addEventListener('click', function() {
+            var force = pushBtn.getAttribute('data-twinsies-force') === '1';
+
+            // Twinfield has no idea a repost is a repost. Unless this site sends its own invoice
+            // numbers, posting again creates a *second* document — so make that explicit.
+            if (force && !confirm({{ 'This order has already been posted. Twinfield will create a second document rather than replacing the first. Continue?'|t('twinsies')|json_encode|raw }})) {
+                return;
+            }
+
+            busy(true);
+            Craft.sendActionRequest('POST', 'twinsies/documents/push', {
+                data: { orderId: pushBtn.getAttribute('data-twinsies-push'), force: force ? 1 : 0 }
+            }).then(function(response) {
+                var data = response.data || {};
+                if (data.success) {
+                    Craft.cp.displayNotice(data.message);
+                    window.location.reload();
+                } else {
+                    Craft.cp.displayError(data.message);
+                }
+            }).catch(function(error) {
+                Craft.cp.displayError((error.response && error.response.data && error.response.data.message)
+                    || {{ 'Could not post the document.'|t('twinsies')|json_encode|raw }});
+            }).finally(function() { busy(false); });
+        });
+    }
+})();
+{% endjs %}

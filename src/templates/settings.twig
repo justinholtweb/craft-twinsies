@@ -1,0 +1,791 @@
+{# Field names carry no `settings[…]` prefix: `craft\base\Plugin::settingsResponse()` runs this
+   template's output through `View::namespaceInputs(…, 'settings')`, so a name written as
+   `settings[foo]` here posts as `settings[settings][foo]` and saves nothing at all — the screen
+   looks perfect, Craft reports "Plugin settings saved", and every edit is silently discarded. #}
+{% import '_includes/forms' as forms %}
+
+{% set plugin = plugin ?? craft.app.plugins.getPlugin('twinsies') %}
+{% set commerceReady = craft.app.plugins.isPluginEnabled('commerce') %}
+{% set auth = plugin.auth %}
+{% set meta = plugin.meta %}
+{% set connection = auth.connection %}
+{% set connected = auth.isConnected() %}
+
+{% set officeOptions = meta.toOptions(meta.safely('offices'), 'Select an office…'|t('twinsies')) %}
+{% set invoiceTypeOptions = meta.toOptions(meta.safely('invoicetypes'), '—'|t('twinsies')) %}
+{% set daybookOptions = meta.toOptions(meta.safely('daybooks'), '—'|t('twinsies')) %}
+{% set balanceOptions = meta.toOptions(meta.safely('gl.bas'), '—'|t('twinsies')) %}
+{% set revenueOptions = meta.toOptions(meta.safely('gl.pnl'), '—'|t('twinsies')) %}
+{% set vatOptions = meta.toOptions(meta.safely('vatcodes'), '—'|t('twinsies')) %}
+{% set bankOptions = meta.toOptions(meta.safely('banks'), '—'|t('twinsies')) %}
+{% set articleOptions = meta.toOptions(meta.safely('articles'), '—'|t('twinsies')) %}
+
+{% set statusList = [] %}
+{% if commerceReady %}
+    {% for status in craft.app.plugins.getPlugin('commerce').orderStatuses.getAllOrderStatuses() %}
+        {% set statusList = statusList|merge([{ label: status.name, value: status.handle }]) %}
+    {% endfor %}
+{% endif %}
+
+{% if not commerceReady %}
+    <div class="pane">
+        <p class="error">{{ 'Craft Commerce is not installed or enabled. Twinsies needs it to do anything.'|t('twinsies') }}</p>
+    </div>
+{% endif %}
+
+{# ------------------------------------------------------------------ #}
+<h2>{{ 'Connection'|t('twinsies') }}</h2>
+
+<div class="pane">
+    <p>
+        {{ 'Register an app in the Twinfield developer portal, then paste its client ID and secret below. Twinfield matches the redirect URI exactly, so copy this one into the app registration verbatim.'|t('twinsies') }}
+    </p>
+
+    {{ forms.textField({
+        label: 'Redirect URI'|t('twinsies'),
+        instructions: 'Register this with your Twinfield app.'|t('twinsies'),
+        id: 'twinsies-redirect',
+        value: settings.getRedirectUri(),
+        readonly: true,
+        class: 'code'
+    }) }}
+
+    {% if connected %}
+        <div class="readable">
+            <p>
+                <span class="status green"></span>
+                <strong>{{ 'Connected'|t('twinsies') }}</strong>
+                {% if connection.twinfieldUser %} — {{ connection.twinfieldUser }}{% endif %}
+                {% if connection.getClusterName() %}
+                    <span class="light">({{ 'cluster'|t('twinsies') }}: {{ connection.getClusterName() }})</span>
+                {% endif %}
+            </p>
+            {% if not connection.readable %}
+                <p class="error">
+                    {{ 'The stored tokens can no longer be decrypted — the Craft security key has changed since this site was connected. Disconnect and connect again.'|t('twinsies') }}
+                </p>
+            {% endif %}
+        </div>
+    {% else %}
+        <p><span class="status"></span> {{ 'Not connected yet.'|t('twinsies') }}</p>
+    {% endif %}
+
+    {# Never nest a form inside the settings form: the browser posts only the outer one, and the
+       inner buttons silently do nothing. These post with JS instead. #}
+    <div class="buttons">
+        <a class="btn submit" href="{{ actionUrl('twinsies/auth/connect') }}">
+            {{ connected ? 'Reconnect'|t('twinsies') : 'Connect to Twinfield'|t('twinsies') }}
+        </a>
+        <button type="button" class="btn" id="twinsies-test">{{ 'Test connection'|t('twinsies') }}</button>
+        {% if connected %}
+            <button type="button" class="btn" id="twinsies-disconnect">{{ 'Disconnect'|t('twinsies') }}</button>
+        {% endif %}
+        <button type="button" class="btn" id="twinsies-refresh">{{ 'Refresh Twinfield lists'|t('twinsies') }}</button>
+        <span class="spinner hidden" id="twinsies-spinner"></span>
+    </div>
+
+    <p id="twinsies-test-result" class="light" style="margin-top: 8px;"></p>
+</div>
+
+{{ forms.autosuggestField({
+    label: 'Client ID'|t('twinsies'),
+    id: 'clientId',
+    name: 'clientId',
+    value: settings.clientId,
+    suggestEnvVars: true
+}) }}
+
+{{ forms.autosuggestField({
+    label: 'Client secret'|t('twinsies'),
+    instructions: 'Put this in your `.env` file and reference it here — plugin settings are project config, and project config is committed.'|t('twinsies'),
+    id: 'clientSecret',
+    name: 'clientSecret',
+    value: settings.clientSecret,
+    suggestEnvVars: true
+}) }}
+
+{% if officeOptions|length > 1 %}
+    {{ forms.selectField({
+        label: 'Office'|t('twinsies'),
+        instructions: 'The Twinfield administration everything posts into.'|t('twinsies'),
+        id: 'office',
+        name: 'office',
+        options: officeOptions,
+        value: settings.office
+    }) }}
+{% else %}
+    {{ forms.autosuggestField({
+        label: 'Office'|t('twinsies'),
+        instructions: 'The Twinfield administration code, e.g. `001`. Connect first and this becomes a list.'|t('twinsies'),
+        id: 'office',
+        name: 'office',
+        value: settings.office,
+        suggestEnvVars: true
+    }) }}
+{% endif %}
+
+{{ forms.textField({
+    label: 'Timeout'|t('twinsies'),
+    instructions: 'Seconds to wait on Twinfield before giving up.'|t('twinsies'),
+    id: 'timeout',
+    name: 'timeout',
+    type: 'number',
+    size: 5,
+    value: settings.timeout
+}) }}
+
+{{ forms.textField({
+    label: 'Attempts'|t('twinsies'),
+    instructions: 'How many times a failed document is retried before it is parked.'|t('twinsies'),
+    id: 'maxAttempts',
+    name: 'maxAttempts',
+    type: 'number',
+    size: 5,
+    value: settings.maxAttempts
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'What gets posted'|t('twinsies') }}</h2>
+
+{{ forms.selectField({
+    label: 'Mode'|t('twinsies'),
+    instructions: 'A **sales invoice** is a document Twinfield can print and send, and needs the Twinfield invoicing module. A **journal transaction** posts the bookkeeping only, and works on every subscription.'|t('twinsies'),
+    id: 'mode',
+    name: 'mode',
+    options: [
+        { label: 'Sales invoice'|t('twinsies'), value: 'salesinvoice' },
+        { label: 'Journal transaction'|t('twinsies'), value: 'transaction' }
+    ],
+    value: settings.mode,
+    toggle: true,
+    targetPrefix: 'twinsies-mode-'
+}) }}
+
+{{ forms.selectField({
+    label: 'Trigger'|t('twinsies'),
+    instructions: 'When an order should be posted.'|t('twinsies'),
+    id: 'trigger',
+    name: 'trigger',
+    options: [
+        { label: 'When the order is completed'|t('twinsies'), value: 'complete' },
+        { label: 'When the order reaches a status'|t('twinsies'), value: 'status' },
+        { label: 'Only when I press the button'|t('twinsies'), value: 'manual' }
+    ],
+    value: settings.trigger,
+    toggle: true,
+    targetPrefix: 'twinsies-trigger-'
+}) }}
+
+<div id="twinsies-trigger-status" class="{{ settings.trigger == 'status' ? '' : 'hidden' }}">
+    {{ forms.checkboxSelectField({
+        label: 'Statuses'|t('twinsies'),
+        instructions: 'Post the order when it reaches any of these.'|t('twinsies'),
+        id: 'triggerStatusHandles',
+        name: 'triggerStatusHandles',
+        options: statusList,
+        values: settings.triggerStatusHandles
+    }) }}
+</div>
+
+{{ forms.lightswitchField({
+    label: 'Post through the queue'|t('twinsies'),
+    instructions: 'Strongly recommended. Order completion happens inside the customer’s payment request, and a slow Twinfield should never be able to hold up a checkout.'|t('twinsies'),
+    id: 'queuePush',
+    name: 'queuePush',
+    on: settings.queuePush
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<div id="twinsies-mode-salesinvoice" class="{{ settings.isSalesInvoiceMode() ? '' : 'hidden' }}">
+    <hr>
+    <h2>{{ 'Sales invoice'|t('twinsies') }}</h2>
+
+    {% if invoiceTypeOptions|length > 1 %}
+        {{ forms.selectField({
+            label: 'Invoice type'|t('twinsies'),
+            id: 'invoiceType',
+            name: 'invoiceType',
+            options: invoiceTypeOptions,
+            value: settings.invoiceType
+        }) }}
+    {% else %}
+        {{ forms.textField({
+            label: 'Invoice type'|t('twinsies'),
+            instructions: 'The Twinfield sales invoice type code, e.g. `FACTUUR`.'|t('twinsies'),
+            id: 'invoiceType',
+            name: 'invoiceType',
+            value: settings.invoiceType
+        }) }}
+    {% endif %}
+
+    {{ forms.selectField({
+        label: 'Status'|t('twinsies'),
+        instructions: 'A **concept** invoice stays editable in Twinfield. A **final** invoice is booked immediately and can only be corrected with a credit note — start on concept until the mapping is proven.'|t('twinsies'),
+        id: 'invoiceStatus',
+        name: 'invoiceStatus',
+        options: [
+            { label: 'Concept'|t('twinsies'), value: 'concept' },
+            { label: 'Final'|t('twinsies'), value: 'final' }
+        ],
+        value: settings.invoiceStatus
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Bank'|t('twinsies'),
+        instructions: 'The bank the invoice asks to be paid into.'|t('twinsies'),
+        id: 'bank',
+        name: 'bank',
+        options: bankOptions,
+        value: settings.bank
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Payment method'|t('twinsies'),
+        id: 'paymentMethod',
+        name: 'paymentMethod',
+        options: [
+            { label: 'Bank'|t('twinsies'), value: 'bank' },
+            { label: 'Cash'|t('twinsies'), value: 'cash' },
+            { label: 'Cheque'|t('twinsies'), value: 'cheque' },
+            { label: 'Cash on delivery'|t('twinsies'), value: 'cashondelivery' },
+            { label: 'Direct debit'|t('twinsies'), value: 'da' }
+        ],
+        value: settings.paymentMethod
+    }) }}
+
+    {{ forms.textField({
+        label: 'Header text'|t('twinsies'),
+        instructions: 'Object template, rendered against the order. Appears above the invoice lines.'|t('twinsies'),
+        id: 'headerText',
+        name: 'headerText',
+        value: settings.headerText,
+        class: 'code'
+    }) }}
+
+    {{ forms.textField({
+        label: 'Footer text'|t('twinsies'),
+        instructions: 'Object template, rendered against the order.'|t('twinsies'),
+        id: 'footerText',
+        name: 'footerText',
+        value: settings.footerText,
+        class: 'code'
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Send Craft’s order reference as the invoice number'|t('twinsies'),
+        instructions: 'Off by default. Twinfield invoice numbers are integers, so only the digits in the reference are sent — and Twinfield’s own numbering never collides with an invoice a bookkeeper entered by hand.'|t('twinsies'),
+        id: 'sendOwnInvoiceNumber',
+        name: 'sendOwnInvoiceNumber',
+        on: settings.sendOwnInvoiceNumber
+    }) }}
+</div>
+
+{# ------------------------------------------------------------------ #}
+<div id="twinsies-mode-transaction" class="{{ settings.isTransactionMode() ? '' : 'hidden' }}">
+    <hr>
+    <h2>{{ 'Journal transaction'|t('twinsies') }}</h2>
+
+    {% if daybookOptions|length > 1 %}
+        {{ forms.selectField({
+            label: 'Daybook'|t('twinsies'),
+            id: 'daybook',
+            name: 'daybook',
+            options: daybookOptions,
+            value: settings.daybook
+        }) }}
+    {% else %}
+        {{ forms.textField({
+            label: 'Daybook'|t('twinsies'),
+            instructions: 'The sales daybook code, e.g. `VRK`.'|t('twinsies'),
+            id: 'daybook',
+            name: 'daybook',
+            value: settings.daybook
+        }) }}
+    {% endif %}
+
+    {{ forms.selectField({
+        label: 'Destiny'|t('twinsies'),
+        instructions: 'A **provisional** transaction can still be deleted in Twinfield. A **final** one cannot.'|t('twinsies'),
+        id: 'destiny',
+        name: 'destiny',
+        options: [
+            { label: 'Provisional'|t('twinsies'), value: 'temporary' },
+            { label: 'Final'|t('twinsies'), value: 'final' }
+        ],
+        value: settings.destiny
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Debtor account'|t('twinsies'),
+        instructions: 'Balance sheet account for trade debtors — the total line books here, e.g. `1300`.'|t('twinsies'),
+        id: 'debtorGl',
+        name: 'debtorGl',
+        options: balanceOptions,
+        value: settings.debtorGl
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Let Twinfield absorb VAT rounding'|t('twinsies'),
+        instructions: 'Allows up to two cents of difference between the VAT Commerce calculated and the VAT Twinfield derives. Without it, a rounding cent rejects the whole posting.'|t('twinsies'),
+        id: 'autoBalanceVat',
+        name: 'autoBalanceVat',
+        on: settings.autoBalanceVat
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Post explicit VAT lines'|t('twinsies'),
+        instructions: 'Off by default: Twinfield derives VAT from each line’s VAT code and books it itself. Turn this on only when the VAT account has to be chosen per line.'|t('twinsies'),
+        id: 'emitVatLines',
+        name: 'emitVatLines',
+        on: settings.emitVatLines,
+        toggle: 'twinsies-vatgl'
+    }) }}
+
+    <div id="twinsies-vatgl" class="{{ settings.emitVatLines ? '' : 'hidden' }}">
+        {{ forms.selectField({
+            label: 'VAT account'|t('twinsies'),
+            id: 'vatGl',
+            name: 'vatGl',
+            options: balanceOptions,
+            value: settings.vatGl
+        }) }}
+    </div>
+</div>
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'Dates'|t('twinsies') }}</h2>
+
+{{ forms.textField({
+    label: 'Payment terms'|t('twinsies'),
+    instructions: 'Days added to the order date to get the due date.'|t('twinsies'),
+    id: 'dueDays',
+    name: 'dueDays',
+    type: 'number',
+    size: 5,
+    value: settings.dueDays
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Send the financial period'|t('twinsies'),
+    instructions: 'Sends `yyyy/PP` alongside the date. Turn it off for offices on a shifted book year, so Twinfield derives the period from the date itself.'|t('twinsies'),
+    id: 'sendPeriod',
+    name: 'sendPeriod',
+    on: settings.sendPeriod
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'Customers'|t('twinsies') }}</h2>
+
+{{ forms.lightswitchField({
+    label: 'Create and update Twinfield debtors'|t('twinsies'),
+    instructions: 'Twinfield will not book an invoice to a customer that does not exist, and it will not create one for you.'|t('twinsies'),
+    id: 'syncCustomers',
+    name: 'syncCustomers',
+    on: settings.syncCustomers
+}) }}
+
+{{ forms.selectField({
+    label: 'Debtor code'|t('twinsies'),
+    instructions: 'Leaving Twinfield to number debtors is safest: a code derived from Craft collides the moment your bookkeeper also enters customers by hand.'|t('twinsies'),
+    id: 'customerCodeStrategy',
+    name: 'customerCodeStrategy',
+    options: [
+        { label: 'Let Twinfield number them'|t('twinsies'), value: 'auto' },
+        { label: 'From the Craft user ID'|t('twinsies'), value: 'userId' },
+        { label: 'From the email address'|t('twinsies'), value: 'email' },
+        { label: 'From a template'|t('twinsies'), value: 'template' }
+    ],
+    value: settings.customerCodeStrategy
+}) }}
+
+{{ forms.textField({
+    label: 'Code prefix'|t('twinsies'),
+    instructions: 'Optional, e.g. `WEB`. Twinfield codes are at most 16 characters.'|t('twinsies'),
+    id: 'customerCodePrefix',
+    name: 'customerCodePrefix',
+    value: settings.customerCodePrefix,
+    size: 10
+}) }}
+
+{{ forms.textField({
+    label: 'Code template'|t('twinsies'),
+    instructions: 'Object template, rendered against the order. Used when the strategy above is “From a template”.'|t('twinsies'),
+    id: 'customerCodeTemplate',
+    name: 'customerCodeTemplate',
+    value: settings.customerCodeTemplate,
+    class: 'code'
+}) }}
+
+{{ forms.textField({
+    label: 'Guest debtor'|t('twinsies'),
+    instructions: 'One existing Twinfield debtor that every guest order books to. Leave empty to give each guest their own — a busy B2C shop usually does not want thousands of dimensions in its books.'|t('twinsies'),
+    id: 'guestCustomerCode',
+    name: 'guestCustomerCode',
+    value: settings.guestCustomerCode
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Update debtors that already exist'|t('twinsies'),
+    instructions: 'Off by default. A bookkeeper who corrected a customer’s address in Twinfield does not expect the next web order to put the old one back.'|t('twinsies'),
+    id: 'updateExistingCustomers',
+    name: 'updateExistingCustomers',
+    on: settings.updateExistingCustomers
+}) }}
+
+{{ forms.textField({
+    label: 'Phone field handle'|t('twinsies'),
+    instructions: 'Custom field on Craft addresses holding a phone number. Craft 5 addresses have no phone attribute of their own.'|t('twinsies'),
+    id: 'phoneFieldHandle',
+    name: 'phoneFieldHandle',
+    value: settings.phoneFieldHandle,
+    class: 'code'
+}) }}
+
+{{ forms.textField({
+    label: 'VAT number field handle'|t('twinsies'),
+    instructions: 'Custom field on the address or the user holding a VAT number. Written to the debtor’s address `field4`.'|t('twinsies'),
+    id: 'vatNumberFieldHandle',
+    name: 'vatNumberFieldHandle',
+    value: settings.vatNumberFieldHandle,
+    class: 'code'
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'Articles and accounts'|t('twinsies') }}</h2>
+
+<p class="light">
+    {{ 'Per-product mapping lives on the [Mapping]({url}) screen. These are the fallbacks.'|t('twinsies', { url: url('twinsies/mapping') })|md(inlineOnly=true) }}
+</p>
+
+{{ forms.selectField({
+    label: 'Default article'|t('twinsies'),
+    id: 'defaultArticle',
+    name: 'defaultArticle',
+    options: articleOptions,
+    value: settings.defaultArticle
+}) }}
+
+{{ forms.selectField({
+    label: 'Default revenue account'|t('twinsies'),
+    instructions: 'Twinfield `dim1` for lines with no more specific mapping, e.g. `8000`.'|t('twinsies'),
+    id: 'defaultRevenueGl',
+    name: 'defaultRevenueGl',
+    options: revenueOptions,
+    value: settings.defaultRevenueGl
+}) }}
+
+{{ forms.selectField({
+    label: 'Shipping article'|t('twinsies'),
+    id: 'shippingArticle',
+    name: 'shippingArticle',
+    options: articleOptions,
+    value: settings.shippingArticle
+}) }}
+
+{{ forms.selectField({
+    label: 'Shipping revenue account'|t('twinsies'),
+    id: 'shippingGl',
+    name: 'shippingGl',
+    options: revenueOptions,
+    value: settings.shippingGl
+}) }}
+
+{{ forms.selectField({
+    label: 'Discount article'|t('twinsies'),
+    id: 'discountArticle',
+    name: 'discountArticle',
+    options: articleOptions,
+    value: settings.discountArticle
+}) }}
+
+{{ forms.selectField({
+    label: 'Discount account'|t('twinsies'),
+    id: 'discountGl',
+    name: 'discountGl',
+    options: revenueOptions,
+    value: settings.discountGl
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Create missing articles'|t('twinsies'),
+    instructions: 'Creates a Twinfield article from the SKU when a purchasable has no mapping. Existing articles are never overwritten.'|t('twinsies'),
+    id: 'autoCreateArticles',
+    name: 'autoCreateArticles',
+    on: settings.autoCreateArticles
+}) }}
+
+{{ forms.textField({
+    label: 'Line description'|t('twinsies'),
+    instructions: 'Object template, rendered against the line item. Twinfield truncates at 110 characters.'|t('twinsies'),
+    id: 'lineDescriptionTemplate',
+    name: 'lineDescriptionTemplate',
+    value: settings.lineDescriptionTemplate,
+    class: 'code'
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Send the SKU as freetext1'|t('twinsies'),
+    id: 'sendSkuAsFreetext',
+    name: 'sendSkuAsFreetext',
+    on: settings.sendSkuAsFreetext
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'VAT'|t('twinsies') }}</h2>
+
+{{ forms.selectField({
+    label: 'Match VAT by'|t('twinsies'),
+    instructions: 'Matching on the **rate actually charged** stays correct when one tax category covers several zones — a Dutch shop shipping to Belgium charges 21% under one category and 0% under another.'|t('twinsies'),
+    id: 'vatSource',
+    name: 'vatSource',
+    options: [
+        { label: 'The rate charged'|t('twinsies'), value: 'rate' },
+        { label: 'The Commerce tax category'|t('twinsies'), value: 'category' }
+    ],
+    value: settings.vatSource,
+    toggle: true,
+    targetPrefix: 'twinsies-vat-'
+}) }}
+
+<div id="twinsies-vat-rate" class="{{ settings.vatSource == 'rate' ? '' : 'hidden' }}">
+    {{ forms.editableTableField({
+        label: 'Rate to VAT code'|t('twinsies'),
+        instructions: 'Percentages as numbers — `21`, `9`, `0`.'|t('twinsies'),
+        id: 'vatRateMap',
+        name: 'vatRateMap',
+        cols: {
+            rate: { heading: 'Rate %'|t('twinsies'), type: 'singleline', width: 100, code: true },
+            vatCode: { heading: 'Twinfield VAT code'|t('twinsies'), type: 'singleline', code: true }
+        },
+        rows: settings.vatRateMap,
+        addRowLabel: 'Add a rate'|t('twinsies'),
+        allowAdd: true,
+        allowDelete: true,
+        allowReorder: true
+    }) }}
+</div>
+
+<div id="twinsies-vat-category" class="{{ settings.vatSource == 'category' ? '' : 'hidden' }}">
+    {{ forms.editableTableField({
+        label: 'Tax category to VAT code'|t('twinsies'),
+        instructions: 'Commerce tax category handles on the left.'|t('twinsies'),
+        id: 'vatCategoryMap',
+        name: 'vatCategoryMap',
+        cols: {
+            category: { heading: 'Tax category handle'|t('twinsies'), type: 'singleline', code: true },
+            vatCode: { heading: 'Twinfield VAT code'|t('twinsies'), type: 'singleline', code: true }
+        },
+        rows: settings.vatCategoryMap,
+        addRowLabel: 'Add a category'|t('twinsies'),
+        allowAdd: true,
+        allowDelete: true,
+        allowReorder: true
+    }) }}
+</div>
+
+{{ forms.selectField({
+    label: 'Zero-rate VAT code'|t('twinsies'),
+    instructions: 'For lines that carry no tax at all — zero-rated exports and reverse-charged intra-EU sales both look like zero here, and both need a real code.'|t('twinsies'),
+    id: 'zeroVatCode',
+    name: 'zeroVatCode',
+    options: vatOptions,
+    value: settings.zeroVatCode
+}) }}
+
+{{ forms.selectField({
+    label: 'Fallback VAT code'|t('twinsies'),
+    instructions: 'Used when nothing above matches.'|t('twinsies'),
+    id: 'defaultVatCode',
+    name: 'defaultVatCode',
+    options: vatOptions,
+    value: settings.defaultVatCode
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'Payments'|t('twinsies') }}</h2>
+
+<p class="light">
+    {{ 'Twinfield is where a bank statement gets matched to an invoice, so for bank transfer and on-account orders Twinfield knows an order is paid before Craft does.'|t('twinsies') }}
+</p>
+
+{{ forms.lightswitchField({
+    label: 'Read payment status back from Twinfield'|t('twinsies'),
+    id: 'reconcileEnabled',
+    name: 'reconcileEnabled',
+    on: settings.reconcileEnabled
+}) }}
+
+{% if settings.reconcileEnabled and not settings.postsFinal() %}
+    <div class="pane">
+        <p class="warning">
+            {{ 'Nothing will be reconciled while documents are posted as concept or provisional: they are not financial transactions yet, so they have no open value to read.'|t('twinsies') }}
+        </p>
+    </div>
+{% endif %}
+
+{{ forms.textField({
+    label: 'Check every'|t('twinsies'),
+    instructions: 'Minutes. Twinsies queues its own sweep, so a cron entry is optional.'|t('twinsies'),
+    id: 'reconcileIntervalMinutes',
+    name: 'reconcileIntervalMinutes',
+    type: 'number',
+    size: 6,
+    value: settings.reconcileIntervalMinutes
+}) }}
+
+{{ forms.textField({
+    label: 'Give up after'|t('twinsies'),
+    instructions: 'Days. Documents older than this stop being checked.'|t('twinsies'),
+    id: 'reconcileLookbackDays',
+    name: 'reconcileLookbackDays',
+    type: 'number',
+    size: 6,
+    value: settings.reconcileLookbackDays
+}) }}
+
+{{ forms.textField({
+    label: 'Documents per run'|t('twinsies'),
+    id: 'reconcileBatchSize',
+    name: 'reconcileBatchSize',
+    type: 'number',
+    size: 6,
+    value: settings.reconcileBatchSize
+}) }}
+
+{{ forms.selectField({
+    label: 'Paid order status'|t('twinsies'),
+    instructions: 'Move the order here once Twinfield reports it fully paid.'|t('twinsies'),
+    id: 'paidOrderStatusHandle',
+    name: 'paidOrderStatusHandle',
+    options: [{ label: '—', value: '' }]|merge(statusList),
+    value: settings.paidOrderStatusHandle
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Record a Commerce payment'|t('twinsies'),
+    instructions: 'Marks the order paid in Commerce, not merely re-statused. Off by default: Commerce’s paid state is normally owned by a payment gateway, and writing a payment no gateway took is a claim about money worth making deliberately.'|t('twinsies'),
+    id: 'markOrderPaid',
+    name: 'markOrderPaid',
+    on: settings.markOrderPaid
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'Refunds'|t('twinsies') }}</h2>
+
+{{ forms.lightswitchField({
+    label: 'Post a credit document when a refund is taken'|t('twinsies'),
+    instructions: 'A partial refund is split across the order’s VAT codes in proportion to their value — the only split that leaves the VAT return right without inventing facts about which items came back.'|t('twinsies'),
+    id: 'creditNotesEnabled',
+    name: 'creditNotesEnabled',
+    on: settings.creditNotesEnabled
+}) }}
+
+{{ forms.selectField({
+    label: 'Credit invoice type'|t('twinsies'),
+    instructions: 'Leave empty to reuse the sales invoice type with negative amounts, which is what an office with no dedicated credit type needs.'|t('twinsies'),
+    id: 'creditInvoiceType',
+    name: 'creditInvoiceType',
+    options: invoiceTypeOptions,
+    value: settings.creditInvoiceType
+}) }}
+
+{{ forms.selectField({
+    label: 'Credit daybook'|t('twinsies'),
+    instructions: 'Leave empty to reuse the sales daybook with the debit and credit sides reversed.'|t('twinsies'),
+    id: 'creditDaybook',
+    name: 'creditDaybook',
+    options: daybookOptions,
+    value: settings.creditDaybook
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'Log'|t('twinsies') }}</h2>
+
+{{ forms.lightswitchField({
+    label: 'Log every Twinfield request'|t('twinsies'),
+    id: 'loggingEnabled',
+    name: 'loggingEnabled',
+    on: settings.loggingEnabled
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Keep the XML'|t('twinsies'),
+    instructions: 'The difference between “Twinfield rejected it” and knowing which field it rejected. Access tokens are redacted before anything is stored.'|t('twinsies'),
+    id: 'logPayloads',
+    name: 'logPayloads',
+    on: settings.logPayloads
+}) }}
+
+{{ forms.textField({
+    label: 'Keep for'|t('twinsies'),
+    instructions: 'Days. Zero keeps everything.'|t('twinsies'),
+    id: 'logRetentionDays',
+    name: 'logRetentionDays',
+    type: 'number',
+    size: 6,
+    value: settings.logRetentionDays
+}) }}
+
+{% js %}
+(function() {
+    var spinner = document.getElementById('twinsies-spinner');
+    var result = document.getElementById('twinsies-test-result');
+
+    function busy(on) {
+        if (spinner) { spinner.classList.toggle('hidden', !on); }
+    }
+
+    var testBtn = document.getElementById('twinsies-test');
+    if (testBtn) {
+        testBtn.addEventListener('click', function() {
+            busy(true);
+            result.textContent = '';
+            result.className = 'light';
+
+            Craft.sendActionRequest('POST', 'twinsies/settings/test')
+                .then(function(response) {
+                    var data = response.data || {};
+                    result.textContent = data.message || '';
+                    result.className = data.ok ? 'success' : 'error';
+                })
+                .catch(function(error) {
+                    result.textContent = (error.response && error.response.data && error.response.data.message)
+                        || {{ 'Could not reach the server.'|t('twinsies')|json_encode|raw }};
+                    result.className = 'error';
+                })
+                .finally(function() { busy(false); });
+        });
+    }
+
+    var disconnectBtn = document.getElementById('twinsies-disconnect');
+    if (disconnectBtn) {
+        disconnectBtn.addEventListener('click', function() {
+            if (!confirm({{ 'Disconnect from Twinfield? Nothing already posted is affected.'|t('twinsies')|json_encode|raw }})) {
+                return;
+            }
+            busy(true);
+            Craft.sendActionRequest('POST', 'twinsies/auth/disconnect')
+                .then(function() { window.location.reload(); })
+                .finally(function() { busy(false); });
+        });
+    }
+
+    var refreshBtn = document.getElementById('twinsies-refresh');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            busy(true);
+            Craft.sendActionRequest('POST', 'twinsies/settings/refresh-meta')
+                .then(function() { window.location.reload(); })
+                .finally(function() { busy(false); });
+        });
+    }
+})();
+{% endjs %}

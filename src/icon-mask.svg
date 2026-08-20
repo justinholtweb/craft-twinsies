@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Twinsies">
+    <!-- Single-colour silhouette for the control panel nav, where Craft recolours the whole mark. -->
+    <g fill="currentColor">
+        <g transform="rotate(-7 50 50)">
+            <path d="M22 14h38a6 6 0 0 1 6 6v52a6 6 0 0 1-6 6H22a6 6 0 0 1-6-6V20a6 6 0 0 1 6-6zm0 7a1 1 0 0 0-1 1v50a1 1 0 0 0 1 1h38a1 1 0 0 0 1-1V22a1 1 0 0 0-1-1z"/>
+        </g>
+        <g transform="rotate(6 50 50)">
+            <rect x="34" y="22" width="50" height="64" rx="6"/>
+        </g>
+    </g>
+</svg>

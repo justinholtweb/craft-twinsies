@@ -1,0 +1,140 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set title = 'Mapping'|t('twinsies') %}
+{% set selectedSubnavItem = 'mapping' %}
+
+{% set crumbs = [
+    { label: 'Twinsies'|t('twinsies'), url: url('twinsies') }
+] %}
+
+{% set fullPageForm = true %}
+
+{% block content %}
+    <input type="hidden" name="action" value="twinsies/mapping/save">
+    {{ redirectInput('twinsies/mapping') }}
+
+    {% if not connected %}
+        <div class="pane">
+            <p class="warning">
+                {{ 'Not connected to Twinfield, so the article, account and VAT lists below are empty. Codes can still be typed in by hand.'|t('twinsies') }}
+            </p>
+        </div>
+    {% endif %}
+
+    <p class="light">
+        {{ 'Each row answers two questions for the lines it covers: which Twinfield **article** they appear as, and which **revenue account** they book to. The most specific row wins — a purchasable beats its product type, which beats “everything else”.'|t('twinsies')|md }}
+    </p>
+
+    <div class="pane">
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th style="width: 26%;">{{ 'Commerce'|t('twinsies') }}</th>
+                    <th>{{ 'Article'|t('twinsies') }}</th>
+                    <th>{{ 'Sub-article'|t('twinsies') }}</th>
+                    <th>{{ 'Revenue account'|t('twinsies') }}</th>
+                    <th>{{ 'VAT code'|t('twinsies') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mapKey, label in rows %}
+                    {% set map = existing[mapKey] ?? null %}
+                    <tr>
+                        <th>
+                            {{ label }}
+                            <input type="hidden" name="maps[{{ mapKey }}][label]" value="{{ label }}">
+                        </th>
+                        <td>
+                            {{ forms.autosuggest({
+                                name: 'maps[' ~ mapKey ~ '][article]',
+                                value: map ? map.article : '',
+                                suggestions: [{ label: 'Twinfield articles'|t('twinsies'), data: articles|keys|map(c => { name: c, hint: articles[c] }) }],
+                                class: 'code'
+                            }) }}
+                        </td>
+                        <td>
+                            {{ forms.text({
+                                name: 'maps[' ~ mapKey ~ '][subarticle]',
+                                value: map ? map.subarticle : '',
+                                class: 'code',
+                                size: 10
+                            }) }}
+                        </td>
+                        <td>
+                            {{ forms.autosuggest({
+                                name: 'maps[' ~ mapKey ~ '][revenueGl]',
+                                value: map ? map.revenueGl : '',
+                                suggestions: [{ label: 'Profit and loss accounts'|t('twinsies'), data: revenueAccounts|keys|map(c => { name: c, hint: revenueAccounts[c] }) }],
+                                class: 'code'
+                            }) }}
+                        </td>
+                        <td>
+                            {{ forms.autosuggest({
+                                name: 'maps[' ~ mapKey ~ '][vatCode]',
+                                value: map ? map.vatCode : '',
+                                suggestions: [{ label: 'VAT codes'|t('twinsies'), data: vatCodes|keys|map(c => { name: c, hint: vatCodes[c] }) }],
+                                class: 'code'
+                            }) }}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <p class="light">
+        {{ 'Leaving a row entirely blank deletes it, falling back to the next most general row and then to the defaults on the [settings screen]({url}).'|t('twinsies', { url: url('settings/plugins/twinsies') })|md(inlineOnly=true) }}
+    </p>
+
+    <h2>{{ 'Override a single product'|t('twinsies') }}</h2>
+
+    <div class="pane">
+        <p class="light">
+            {{ 'Per-purchasable overrides are added here rather than listed: a catalogue of ten thousand variants is not a settings screen. Enter the purchasable (variant) ID and save; the row then appears in the table above.'|t('twinsies') }}
+        </p>
+        {{ forms.textField({
+            label: 'Purchasable ID'|t('twinsies'),
+            id: 'twinsies-new-purchasable',
+            name: 'ignored',
+            type: 'number',
+            size: 10,
+            instructions: 'The variant’s element ID.'|t('twinsies')
+        }) }}
+        <button type="button" class="btn" id="twinsies-add-row">{{ 'Add row'|t('twinsies') }}</button>
+    </div>
+
+    {% js %}
+    (function() {
+        var button = document.getElementById('twinsies-add-row');
+        if (!button) { return; }
+
+        button.addEventListener('click', function() {
+            var input = document.getElementById('twinsies-new-purchasable');
+            var id = (input.value || '').trim();
+
+            if (!/^\d+$/.test(id)) {
+                Craft.cp.displayError({{ 'Enter a numeric purchasable ID.'|t('twinsies')|json_encode|raw }});
+                return;
+            }
+
+            var tbody = document.querySelector('.pane table.data tbody');
+            var key = 'purchasable:' + id;
+
+            if (document.querySelector('[name="maps[' + key + '][article]"]')) {
+                Craft.cp.displayNotice({{ 'That purchasable already has a row.'|t('twinsies')|json_encode|raw }});
+                return;
+            }
+
+            var row = document.createElement('tr');
+            row.innerHTML = '<th>' + Craft.escapeHtml({{ 'Purchasable #'|t('twinsies')|json_encode|raw }} + id) +
+                '<input type="hidden" name="maps[' + key + '][label]" value="Purchasable #' + id + '"></th>' +
+                ['article', 'subarticle', 'revenueGl', 'vatCode'].map(function(field) {
+                    return '<td><input type="text" class="text code fullwidth" name="maps[' + key + '][' + field + ']" value=""></td>';
+                }).join('');
+            tbody.appendChild(row);
+            input.value = '';
+        });
+    })();
+    {% endjs %}
+{% endblock %}
