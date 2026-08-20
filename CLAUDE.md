@@ -161,6 +161,7 @@ cd ~/Sites/plugin-testing
 ddev exec php /var/www/craft-twinsies/tests/integration/checks.php    # 155 checks
 ddev exec php /var/www/craft-twinsies/tests/tools/collisions.php      # base-class method clashes
 ddev exec php /var/www/craft-twinsies/tests/tools/dump-settings.php   # what project config stored
+ddev exec php /var/www/craft-twinsies/tests/tools/translations.php    # missing / orphaned / mangled strings
 ddev exec bash -c 'find /var/www/craft-twinsies/src -name "*.php" -print0 | xargs -0 -n1 php -l'
 ```
 
@@ -183,8 +184,13 @@ shared harness.
 
 ## Coding conventions
 
-- `Craft::t('twinsies', '…')` for user-facing strings; `src/translations/en/twinsies.php` lists them.
-  A `nl` file is the first translation worth having — this plugin exists for a Dutch product.
+- `Craft::t('twinsies', '…')` for user-facing strings. `src/translations/en/twinsies.php` is the
+  generated key list; **`nl` is the one that matters** — Twinfield is a Dutch product and the
+  readers are bookkeepers. The Dutch follows Twinfield's own vocabulary, not a literal translation:
+  *administratie* (not "kantoor"), *dagboek*, *debiteur*, *grootboekrekening*, *afletteren*,
+  *creditfactuur*, *voorlopig*/*definitief*. `tests/tools/translations.php` enforces that
+  placeholders and `` `code` `` spans survive untouched while `**emphasis**` is translated — only
+  the *number* of emphasised runs has to match, or the Markdown renders as literal asterisks.
 - Business logic in services; controllers stay thin
 - Never nest a `<form>` in a CP template — post secondary actions with `Craft.sendActionRequest`
 - Never mark plugin settings `required`

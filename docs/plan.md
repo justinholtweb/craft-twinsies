@@ -38,6 +38,9 @@ Taken 2026-08-20:
       four console controllers, Twig variable.
 - [x] **10 — Verification.** 155 integration checks against a scripted Twinfield; control panel
       smoke-tested with a real session; settings round-trip through project config confirmed.
+- [x] **11 — Dutch.** All 296 strings translated in Twinfield's own vocabulary, verified by
+      `tests/tools/translations.php` (placeholders and code spans exact, emphasis runs balanced)
+      and rendered end to end with the control panel set to `nl`.
 
 ## What is not proven
 
@@ -65,7 +68,6 @@ Two smaller unknowns to settle in the same pass:
 ## Still to do
 
 - [ ] Live Twinfield run (above)
-- [ ] `nl` translation file
 - [ ] GitHub repo, tag `5.0.0`, Packagist, Plugin Store submission
 - [ ] Marketing + docs site, following the family pattern
 - [ ] Entry in the plugin registry

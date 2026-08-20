@@ -23,3 +23,5 @@ Initial release.
   redacted.
 - Console commands for posting, previewing, retrying, reconciling and log housekeeping.
 - `craft.twinsies` Twig variable for order confirmation pages.
+- **Dutch translation** of all 296 interface strings, using Twinfield's own vocabulary
+  (*administratie*, *dagboek*, *debiteur*, *grootboekrekening*, *afletteren*, *creditfactuur*).

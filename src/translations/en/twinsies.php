@@ -1,10 +1,14 @@
 <?php
 
 /**
- * Twinsies translations.
+ * Twinsies translations — source strings.
  *
- * Dutch is the language most of these will actually be read in — the plugin exists for a Dutch
- * accounting system — so a `nl` file is the first translation worth having.
+ * Regenerate the key list with:
+ *
+ *     grep -rhoE "Craft::t\\(\\s*'twinsies'\\s*,\\s*'[^']*'" src --include=*.php
+ *
+ * `src/translations/nl/twinsies.php` is the one that matters: this plugin exists for a Dutch
+ * accounting product, and the people reading these strings are bookkeepers.
  */
 
 return [
@@ -12,6 +16,7 @@ return [
     'A **provisional** transaction can still be deleted in Twinfield. A **final** one cannot.' => 'A **provisional** transaction can still be deleted in Twinfield. A **final** one cannot.',
     'A **sales invoice** is a document Twinfield can print and send, and needs the Twinfield invoicing module. A **journal transaction** posts the bookkeeping only, and works on every subscription.' => 'A **sales invoice** is a document Twinfield can print and send, and needs the Twinfield invoicing module. A **journal transaction** posts the bookkeeping only, and works on every subscription.',
     'A partial refund is split across the order’s VAT codes in proportion to their value — the only split that leaves the VAT return right without inventing facts about which items came back.' => 'A partial refund is split across the order’s VAT codes in proportion to their value — the only split that leaves the VAT return right without inventing facts about which items came back.',
+    'A {amount} rounding difference was booked to the default revenue account.' => 'A {amount} rounding difference was booked to the default revenue account.',
     'Action' => 'Action',
     'Add a Twinfield client ID and secret first.' => 'Add a Twinfield client ID and secret first.',
     'Add a category' => 'Add a category',
@@ -221,6 +226,7 @@ return [
     'Response' => 'Response',
     'Retry {count} failed' => 'Retry {count} failed',
     'Revenue account' => 'Revenue account',
+    'Rounding' => 'Rounding',
     'Sales invoice' => 'Sales invoice',
     'Seconds to wait on Twinfield before giving up.' => 'Seconds to wait on Twinfield before giving up.',
     'Select an office…' => 'Select an office…',
@@ -249,8 +255,6 @@ return [
     'The Twinfield sales invoice type code, e.g. `FACTUUR`.' => 'The Twinfield sales invoice type code, e.g. `FACTUUR`.',
     'The bank the invoice asks to be paid into.' => 'The bank the invoice asks to be paid into.',
     'The difference between “Twinfield rejected it” and knowing which field it rejected. Access tokens are redacted before anything is stored.' => 'The difference between “Twinfield rejected it” and knowing which field it rejected. Access tokens are redacted before anything is stored.',
-    'The document totals {document} but the order totals {order}. Check the adjustment mapping.' => 'The document totals {document} but the order totals {order}. Check the adjustment mapping.',
-    'The lines came to {lines} but the order total is {total}; the difference was booked to the default revenue account.' => 'The lines came to {lines} but the order total is {total}; the difference was booked to the default revenue account.',
     'The order reference has no digits in it, so Twinfield numbered this invoice itself.' => 'The order reference has no digits in it, so Twinfield numbered this invoice itself.',
     'The rate charged' => 'The rate charged',
     'The sales daybook code, e.g. `VRK`.' => 'The sales daybook code, e.g. `VRK`.',
