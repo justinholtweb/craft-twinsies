@@ -1,7 +1,8 @@
 # Twinsies — build plan
 
-Status as of 2026-08-20: **built, 155 integration checks green, control panel smoke-tested.**
-Not yet committed to a remote, tagged, on Packagist, or submitted to the Plugin Store.
+Status as of 2026-08-23: **built, 155 integration checks green, control panel smoke-tested,
+docs written, promos rendered, marketing site live locally, tagged `5.0.0` locally.**
+Not yet pushed to a remote, on Packagist, or listed in the Craft Console.
 
 ## Decisions
 
@@ -41,6 +42,9 @@ Taken 2026-08-20:
 - [x] **11 — Dutch.** All 296 strings translated in Twinfield's own vocabulary, verified by
       `tests/tools/translations.php` (placeholders and code spans exact, emphasis runs balanced)
       and rendered end to end with the control panel set to `nl`.
+- [x] **12 — Release prep.** Five docs pages with front matter, seven Plugin Store promo slides,
+      and the marketing site at `justinholt.com/plugins/craft-twinsies` (29 leakage checks green,
+      trademark disclaimer set). Tagged `5.0.0`.
 
 ## What is not proven
 
@@ -67,7 +71,10 @@ Two smaller unknowns to settle in the same pass:
 
 ## Still to do
 
-- [ ] Live Twinfield run (above)
-- [ ] GitHub repo, tag `5.0.0`, Packagist, Plugin Store submission
-- [ ] Marketing + docs site, following the family pattern
-- [ ] Entry in the plugin registry
+- [ ] **Live Twinfield run (above)** — the only thing between this and being sellable
+- [ ] `git push` to a public `justinholtweb/craft-twinsies`, and push the `5.0.0` tag
+- [ ] Packagist
+- [ ] Register at `id.craftcms.com` and set the $149 price there — the price lives in the Craft
+      Console, not in any repo, which is the one that silently disagrees with everything else
+- [ ] Deploy justinholt.com, then on the server: `php craft index-assets/all`,
+      `php craft pluginsite/page/import craft-twinsies`, `php craft pluginsite/docs/import`

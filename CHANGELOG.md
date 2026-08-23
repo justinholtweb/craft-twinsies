@@ -1,6 +1,6 @@
 # Changelog
 
-## 5.0.0 — 2026-08-20
+## 5.0.0 — 2026-08-23
 
 Initial release.
 
