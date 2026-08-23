@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<!-- handmade: hand-tuned deck -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Twinsies — Plugin Store promos</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --charcoal: #0f0f1a;
+    --charcoal-lighter: #252540;
+    --accent: #1b5fa8;
+    --accent-light: #4e8fd6;
+    --amber: #f0a22e;
+    --off-white: #f0f0f5;
+  }
+
+  html { background: #000; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--off-white);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- slide shell ---------------------------------------------------- */
+  .slide {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse at 85% 15%, rgba(27, 95, 168, 0.26) 0%, transparent 40%),
+      radial-gradient(ellipse at 65% 5%,  rgba(78, 143, 214, 0.14) 0%, transparent 35%),
+      radial-gradient(ellipse at 15% 85%, rgba(240, 162, 46, 0.07) 0%, transparent 40%),
+      radial-gradient(ellipse at 35% 95%, rgba(27, 95, 168, 0.10) 0%, transparent 35%),
+      linear-gradient(135deg, #0f0f1a 0%, #101724 30%, #121b2a 60%, #0f0f1a 100%);
+  }
+
+  /* Oversized watermark, echoing the app icon */
+  .slide::after {
+    content: '';
+    position: absolute;
+    top: -18%;
+    left: -12%;
+    width: 1180px;
+    height: 1180px;
+    background: url('assets/watermark.svg') no-repeat center / contain;
+    opacity: 0.032;
+    pointer-events: none;
+  }
+
+  /* Hairline along the top edge */
+  .slide::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light), var(--amber), var(--accent));
+    z-index: 5;
+  }
+
+  .inner {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    padding: 118px 130px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* ---- type ------------------------------------------------------------ */
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(240, 240, 245, 0.62);
+    margin-bottom: 34px;
+  }
+  .eyebrow .rule {
+    width: 58px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--accent-light);
+  }
+
+  h1, h2 {
+    font-family: 'Jersey 20', sans-serif;
+    font-weight: 400;
+    line-height: 0.9;
+    letter-spacing: 0.005em;
+  }
+
+  .gradient-text {
+    background: linear-gradient(100deg, #2f77c4 0%, #6ba6e0 34%, #a9cff2 54%, #ffc061 76%, #f0a22e 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .lede {
+    font-size: 34px;
+    line-height: 1.5;
+    color: rgba(240, 240, 245, 0.72);
+  }
+
+  .mono {
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+
+  /* ---- cover slide ----------------------------------------------------- */
+  .cover .inner { gap: 90px; }
+  .cover .copy { flex: 1 1 auto; }
+  .cover h1 { font-size: 200px; margin-bottom: 26px; }
+  .cover .tagline {
+    font-family: 'Jersey 20', sans-serif;
+    font-size: 60px;
+    line-height: 1.02;
+    color: var(--off-white);
+    margin-bottom: 40px;
+    max-width: 15ch;
+  }
+  .cover .lede { max-width: 27ch; font-size: 30px; }
+
+  .cover .mark {
+    flex: 0 0 auto;
+    width: 460px;
+    height: 460px;
+    filter: drop-shadow(14px 14px 0 rgba(0, 0, 0, 0.35));
+  }
+  .cover .mark img { width: 100%; height: 100%; display: block; }
+
+  .badges { display: flex; gap: 16px; margin-top: 52px; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 26px;
+    font-size: 22px;
+    font-weight: 500;
+    color: rgba(240, 240, 245, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 999px;
+  }
+  .badge .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent-light);
+  }
+
+  /* ---- the fork: one order, two shapes --------------------------------- */
+  .statement .inner { flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+  .statement .eyebrow { justify-content: center; }
+  .statement h2 { font-size: 96px; margin-bottom: 26px; }
+  .statement .lede { max-width: 64ch; font-size: 30px; }
+
+  .fork { display: flex; align-items: stretch; gap: 34px; margin: 48px 0 40px; }
+  .fork .card {
+    flex: 1 1 0;
+    width: 660px;
+    padding: 44px 46px;
+    text-align: left;
+    border-radius: 20px;
+    background: rgba(37, 37, 64, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .fork .card.alt { border-color: rgba(240, 162, 46, 0.28); }
+  .fork .card .kicker {
+    font-size: 21px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent-light);
+    margin-bottom: 16px;
+  }
+  .fork .card.alt .kicker { color: var(--amber); }
+  .fork .card .name {
+    font-family: 'Jersey 20', sans-serif;
+    font-size: 62px;
+    line-height: 1;
+    margin-bottom: 20px;
+  }
+  .fork .card .desc { font-size: 24px; line-height: 1.5; color: rgba(240, 240, 245, 0.58); margin-bottom: 26px; }
+  .fork .card pre {
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 21px;
+    line-height: 1.65;
+    color: rgba(240, 240, 245, 0.72);
+    white-space: pre;
+  }
+  .fork .card pre .tag { color: var(--accent-light); }
+  .fork .card.alt pre .tag { color: var(--amber); }
+
+  /* ---- feature slides -------------------------------------------------- */
+  .feature .inner { align-items: center; }
+  .feature .copy { width: 780px; flex: 0 0 780px; }
+  .feature h2 { font-size: 100px; margin-bottom: 30px; }
+  .feature .lede { max-width: 21ch; }
+
+  .points {
+    list-style: none;
+    margin-top: 44px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .points li {
+    max-width: 700px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    font-size: 25px;
+    line-height: 1.4;
+    color: rgba(240, 240, 245, 0.6);
+  }
+  .points li .tick {
+    flex: 0 0 auto;
+    margin-top: 9px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent-light);
+  }
+
+  /* Right-hand panel shared by the mapping, VAT and reconcile slides */
+  .panel {
+    position: absolute;
+    top: 50%;
+    left: 900px;
+    right: 130px;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  /* ---- mapping rows ---------------------------------------------------- */
+  .token-row {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    padding: 32px 38px;
+    border-radius: 16px;
+    background: rgba(37, 37, 64, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .token-row .fmt { font-size: 30px; color: rgba(240, 240, 245, 0.55); flex: 1 1 auto; }
+  .token-row .to { color: var(--accent-light); font-size: 30px; flex: 0 0 auto; }
+  .token-row .val { font-size: 32px; color: var(--off-white); flex: 0 0 auto; }
+
+  /* ---- VAT buckets ----------------------------------------------------- */
+  .buckets { display: flex; gap: 22px; }
+  .bucket {
+    flex: 1 1 0;
+    padding: 38px 24px;
+    border-radius: 18px;
+    background: rgba(37, 37, 64, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    text-align: center;
+  }
+  .bucket .period {
+    font-size: 24px;
+    letter-spacing: 0.1em;
+    color: rgba(240, 240, 245, 0.5);
+    margin-bottom: 20px;
+  }
+  .bucket .count {
+    font-family: 'Jersey 20', sans-serif;
+    font-size: 86px;
+    line-height: 1;
+    color: var(--accent-light);
+  }
+  .bucket .label { font-size: 20px; color: rgba(240, 240, 245, 0.4); margin-top: 16px; line-height: 1.4; }
+  .bucket.fresh .count { color: var(--amber); }
+
+  .note {
+    font-size: 24px;
+    line-height: 1.5;
+    color: rgba(240, 240, 245, 0.45);
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  /* ---- reconciliation steps -------------------------------------------- */
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+    padding: 26px 34px;
+    border-radius: 16px;
+    background: rgba(37, 37, 64, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .step .num {
+    flex: 0 0 auto;
+    width: 58px; height: 58px;
+    display: grid; place-items: center;
+    border-radius: 12px;
+    background: var(--accent);
+    font-family: 'Jersey 20', sans-serif;
+    font-size: 38px;
+    color: #fff;
+  }
+  .step.halt .num { background: #a3341f; }
+  .step .label { display: block; font-size: 28px; font-weight: 600; color: var(--off-white); }
+  .step .sub { display: block; font-size: 20px; color: rgba(240, 240, 245, 0.55); margin-top: 6px; }
+
+  .lock {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    font-size: 22px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(240, 240, 245, 0.42);
+  }
+  .lock .bar { flex: 1 1 auto; height: 1px; background: rgba(255,255,255,0.1); }
+
+  /* ---- open-items sheet -------------------------------------------------- */
+  .sheet {
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.5);
+  }
+  .sheet .head {
+    display: flex;
+    padding: 26px 38px;
+    background: rgba(27, 95, 168, 0.22);
+    font-size: 21px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(240, 240, 245, 0.6);
+  }
+  .sheet .row {
+    display: flex;
+    padding: 26px 38px;
+    background: rgba(37, 37, 64, 0.55);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 29px;
+    align-items: center;
+  }
+  .sheet .c1 { flex: 0 0 330px; color: rgba(240, 240, 245, 0.55); }
+  .sheet .c2 { flex: 0 0 200px; color: var(--off-white); text-align: right; }
+  .sheet .c3 { flex: 1 1 auto; text-align: right; }
+  .sheet .paid { color: #4ade80; }
+  .sheet .open { color: var(--amber); }
+
+  /* ---- terminal --------------------------------------------------------- */
+  .term {
+    position: absolute;
+    top: 50%;
+    left: 900px;
+    right: -110px;
+    transform: translateY(-50%);
+    border-radius: 14px; overflow: hidden; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55); border: 1px solid rgba(255, 255, 255, 0.08); }
+  .term .chrome {
+    height: 44px;
+    background: #2a2a3e;
+    background-image:
+      radial-gradient(circle at 26px 22px, #ff5f57 6.5px, transparent 7px),
+      radial-gradient(circle at 52px 22px, #ffbd2e 6.5px, transparent 7px),
+      radial-gradient(circle at 78px 22px, #28ca42 6.5px, transparent 7px);
+  }
+  .term .body {
+    background: #12121f;
+    padding: 42px 44px;
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 24px;
+    line-height: 1.95;
+  }
+  .term .prompt { color: var(--accent-light); }
+  .term .cmd { color: var(--off-white); }
+  .term .out { color: rgba(240, 240, 245, 0.45); }
+  .term .ok { color: #4ade80; }
+  .term .warn { color: var(--amber); }
+  .term .bad { color: #f87171; }
+  .term .blank { display: block; height: 18px; }
+
+  /* ---- footer lockup --------------------------------------------------- */
+  .footer {
+    position: absolute;
+    left: 130px;
+    bottom: 62px;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    font-size: 22px;
+    letter-spacing: 0.06em;
+    color: rgba(240, 240, 245, 0.4);
+  }
+  .footer img { width: 40px; height: 40px; border-radius: 9px; }
+  .footer b { color: rgba(240, 240, 245, 0.72); font-weight: 600; }
+
+  /* Only render the requested slide when screenshotting */
+  body.single .slide { display: none; }
+  body.single .slide.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- 1 · Cover ============================================================ -->
+<section class="slide cover" data-n="1">
+  <div class="inner">
+    <div class="copy">
+      <div class="eyebrow"><span class="rule"></span> Craft Commerce 5 &nbsp;·&nbsp; Twinfield</div>
+      <h1 class="gradient-text">Twinsies</h1>
+      <p class="tagline">Your orders, already in the books.</p>
+      <p class="lede">Commerce orders posted into Twinfield as sales invoices or journal transactions — with the VAT, the debtor and the ledger account already right.</p>
+      <div class="badges">
+        <span class="badge"><span class="dot"></span> $149 &nbsp;·&nbsp; one edition</span>
+        <span class="badge">Craft 5.3+ · Commerce 5 · PHP 8.2+</span>
+        <span class="badge">NL &nbsp;·&nbsp; Nederlands</span>
+      </div>
+    </div>
+    <div class="mark"><img src="assets/icon.svg" alt=""></div>
+  </div>
+</section>
+
+<!-- 2 · One order, two shapes =========================================== -->
+<section class="slide statement" data-n="2">
+  <div class="inner">
+    <div class="eyebrow"><span class="rule"></span> The whole idea</div>
+    <h2 class="gradient-text">One order, two shapes</h2>
+    <div class="fork">
+      <div class="card">
+        <div class="kicker">Sales invoice</div>
+        <div class="name">Twinfield sends it</div>
+        <p class="desc">A document Twinfield can print, email and chase. Needs the invoicing module.</p>
+<pre>&lt;<span class="tag">salesinvoice</span>&gt;
+  &lt;invoicetype&gt;FACTUUR&lt;/&gt;
+  &lt;customer&gt;1000&lt;/&gt;
+  &lt;line&gt; 2 × 49.50  VH  8000 &lt;/&gt;
+&lt;/<span class="tag">salesinvoice</span>&gt;</pre>
+      </div>
+      <div class="card alt">
+        <div class="kicker">Journal transaction</div>
+        <div class="name">You send it</div>
+        <p class="desc">The bookkeeping only. Works on every Twinfield subscription.</p>
+<pre>&lt;<span class="tag">transaction</span>&gt;
+  &lt;code&gt;VRK&lt;/&gt;
+  detail  8000  credit   99.00
+  total   1300  debit   119.79
+&lt;/<span class="tag">transaction</span>&gt;</pre>
+      </div>
+    </div>
+    <p class="lede">Twinfield&rsquo;s invoicing module is a separate product — shops that send their own invoices need the journal, not the document.</p>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Twinsies</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-twinsies</div>
+</section>
+
+<!-- 3 · Mapping ========================================================== -->
+<section class="slide feature" data-n="3">
+  <div class="inner">
+    <div class="copy">
+      <div class="eyebrow"><span class="rule"></span> Articles &amp; accounts</div>
+      <h2>Your chart of<br>accounts, in a<br>dropdown</h2>
+      <p class="lede">Twinsies reads your real Twinfield administration and maps against it.</p>
+      <ul class="points">
+        <li><span class="tick"></span> Per purchasable, per product type, then a catch-all</li>
+        <li><span class="tick"></span> Shipping and discounts get their own accounts</li>
+        <li><span class="tick"></span> A mistyped ledger account is not rejected by Twinfield — it is <em>created</em></li>
+      </ul>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="token-row mono"><span class="fmt">Variant #4192</span><span class="to">&rarr;</span><span class="val">WIDGET · 8000</span></div>
+    <div class="token-row mono"><span class="fmt">Product type: Courses</span><span class="to">&rarr;</span><span class="val">CURSUS · 8010</span></div>
+    <div class="token-row mono"><span class="fmt">Shipping</span><span class="to">&rarr;</span><span class="val">VERZEND · 8100</span></div>
+    <div class="token-row mono"><span class="fmt">Everything else</span><span class="to">&rarr;</span><span class="val">WEBSHOP · 8000</span></div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Twinsies</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-twinsies</div>
+</section>
+
+<!-- 4 · VAT ============================================================== -->
+<section class="slide feature" data-n="4">
+  <div class="inner">
+    <div class="copy">
+      <div class="eyebrow"><span class="rule"></span> Btw</div>
+      <h2>VAT that<br>survives the<br>return</h2>
+      <p class="lede">Matched on the rate Commerce actually charged, not on a category that covers three zones.</p>
+      <ul class="points">
+        <li><span class="tick"></span> A Dutch shop shipping to Belgium charges 21% under one category and 0% under another</li>
+        <li><span class="tick"></span> Commerce&rsquo;s tax is never sent as its own line — Twinfield derives it, and both would charge it twice</li>
+      </ul>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="buckets">
+      <div class="bucket"><div class="period">21%</div><div class="count">VH</div><div class="label">Hoog</div></div>
+      <div class="bucket"><div class="period">9%</div><div class="count">VL</div><div class="label">Laag</div></div>
+      <div class="bucket fresh"><div class="period">0%</div><div class="count">VN</div><div class="label">Export &amp;<br>verlegd</div></div>
+    </div>
+    <p class="note">Zero-rated exports and reverse-charged intra-EU sales both look like nothing here. Both get a real code, not the standard-rate fallback.</p>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Twinsies</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-twinsies</div>
+</section>
+
+<!-- 5 · It reconciles before it sends ==================================== -->
+<section class="slide feature" data-n="5">
+  <div class="inner">
+    <div class="copy">
+      <div class="eyebrow"><span class="rule"></span> Before anything is posted</div>
+      <h2>It refuses<br>rather than<br>guess</h2>
+      <p class="lede">Every document is reconciled against what the customer actually paid.</p>
+      <ul class="points">
+        <li><span class="tick"></span> Books that reconcile and are wrong cost more than a support ticket</li>
+      </ul>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="step"><span class="num">1</span><span><span class="label">Build the lines</span><span class="sub">Items, shipping, discounts — included tax taken back out</span></span></div>
+    <div class="step"><span class="num">2</span><span><span class="label">Compare to order.totalPrice</span><span class="sub">The figure the customer was charged</span></span></div>
+    <div class="step"><span class="num">3</span><span><span class="label">Within a cent or two?</span><span class="sub">Booked to a visible Rounding line</span></span></div>
+    <div class="step halt"><span class="num">!</span><span><span class="label">Anything larger — nothing is sent</span><span class="sub">&ldquo;Twinsies does not know how to express these order adjustments: gratuity.&rdquo;</span></span></div>
+    <div class="lock"><span class="bar"></span> No unexplained postings <span class="bar"></span></div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Twinsies</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-twinsies</div>
+</section>
+
+<!-- 6 · Payments come back =============================================== -->
+<section class="slide feature" data-n="6">
+  <div class="inner">
+    <div class="copy">
+      <div class="eyebrow"><span class="rule"></span> Afletteren</div>
+      <h2>Twinfield<br>knows first</h2>
+      <p class="lede">A bank statement is matched to an invoice in Twinfield — so for transfers and on-account orders, Twinfield knows before Craft does.</p>
+      <ul class="points">
+        <li><span class="tick"></span> Reads the open value and match status back</li>
+        <li><span class="tick"></span> Moves the order&rsquo;s status, or records a Commerce payment</li>
+      </ul>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="sheet">
+      <div class="head"><span class="c1">Document</span><span class="c2">Total</span><span class="c3">Open</span></div>
+      <div class="row mono"><span class="c1">VRK 202600498</span><span class="c2">1.210,00</span><span class="c3 paid">0,00 · paid</span></div>
+      <div class="row mono"><span class="c1">VRK 202600501</span><span class="c2">242,00</span><span class="c3 paid">0,00 · paid</span></div>
+      <div class="row mono"><span class="c1">VRK 202600506</span><span class="c2">89,95</span><span class="c3 open">89,95</span></div>
+      <div class="row mono"><span class="c1">VRK 202600511</span><span class="c2">4.356,00</span><span class="c3 open">1.000,00</span></div>
+    </div>
+    <p class="note">A concept invoice has no open value to read, and Twinsies says so rather than leaving every invoice looking unpaid.</p>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Twinsies</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-twinsies</div>
+</section>
+
+<!-- 7 · The log ========================================================== -->
+<section class="slide feature" data-n="7">
+  <div class="inner">
+    <div class="copy">
+      <div class="eyebrow"><span class="rule"></span> When it goes wrong</div>
+      <h2>The reason,<br>not just the<br>refusal</h2>
+      <p class="lede">Twinfield reports rejections <em>inside</em> a 200 OK, as attributes on the tag it disliked. The response body is the only place the reason ever appears — so Twinsies keeps it.</p>
+      <ul class="points">
+        <li><span class="tick"></span> Request and response XML, access tokens redacted</li>
+      </ul>
+    </div>
+  </div>
+  <div class="term">
+    <div class="chrome"></div>
+    <div class="body">
+      <div><span class="prompt">$</span> <span class="cmd">php craft twinsies/auth/test</span></div>
+      <div class="out"><span class="ok">Connected to Bakkerij Jansen BV (001).</span></div>
+      <span class="blank"></span>
+      <div><span class="prompt">$</span> <span class="cmd">php craft twinsies/sync/order 2026-0448</span></div>
+      <div class="out">Posted 2026-0448 as <span class="ok">VRK 202600512</span>.</div>
+      <span class="blank"></span>
+      <div><span class="prompt">$</span> <span class="cmd">php craft twinsies/sync/order 2026-0449</span></div>
+      <div class="out"><span class="bad">Failed:</span> customer: Unknown dimension</div>
+      <span class="blank"></span>
+      <div><span class="prompt">$</span> <span class="cmd">php craft twinsies/reconcile/run</span></div>
+      <div class="out">Checked 50, <span class="ok">7 newly paid</span>, 0 errored.</div>
+    </div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Twinsies</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-twinsies</div>
+</section>
+
+<script>
+  var n = new URLSearchParams(location.search).get('s');
+  if (n) {
+    document.body.classList.add('single');
+    var el = document.querySelector('.slide[data-n="' + n + '"]');
+    if (el) el.classList.add('active');
+  }
+</script>
+</body>
+</html>

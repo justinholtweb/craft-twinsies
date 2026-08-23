@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="#ffffff" stroke-width="2.4">
+  <!-- The two sheets as outlines, not slabs. The app icon's rectangles are solid; at watermark
+       scale two solid slabs read as a grey box across the slide, which is the same trap the
+       abacus frame fell into. Outlines keep the "same thing, twice" idea legible. -->
+  <g transform="rotate(-7 50 50)">
+    <rect x="16" y="14" width="50" height="64" rx="6"/>
+  </g>
+  <g transform="rotate(6 50 50)">
+    <rect x="34" y="22" width="50" height="64" rx="6"/>
+    <path d="M43 37.5h32M43 49.5h32M43 61.5h20M43 73.5h26" stroke-linecap="round"/>
+  </g>
+</svg>
