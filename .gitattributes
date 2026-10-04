@@ -1,0 +1,8 @@
+# Kept out of the Composer dist: the Plugin Store listing art, the test harness and internal notes
+# are not something a site should install.
+/.gitattributes  export-ignore
+/.gitignore      export-ignore
+/CLAUDE.md       export-ignore
+/docs/plan.md    export-ignore
+/promos          export-ignore
+/tests           export-ignore

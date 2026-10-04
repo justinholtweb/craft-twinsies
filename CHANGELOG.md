@@ -1,13 +1,13 @@
 # Changelog
 
-## 5.0.0 — 2026-08-23
+## 5.0.0 - 2026-10-04
 
 Initial release.
 
 ### Added
 
 - Posts completed Craft Commerce orders into Twinfield, as either a **sales invoice** or a
-  **journal transaction**, switchable per site.
+  **journal transaction**, chosen per installation.
 - OAuth 2.0 connection with automatic cluster resolution, token refresh and encrypted storage of
   the grant outside project config.
 - Customer sync: creates and updates the Twinfield debtor (dimension type `DEB`) before posting,
@@ -23,5 +23,5 @@ Initial release.
   redacted.
 - Console commands for posting, previewing, retrying, reconciling and log housekeeping.
 - `craft.twinsies` Twig variable for order confirmation pages.
-- **Dutch translation** of all 296 interface strings, using Twinfield's own vocabulary
+- **Dutch translation** of all 330 interface strings, using Twinfield's own vocabulary
   (*administratie*, *dagboek*, *debiteur*, *grootboekrekening*, *afletteren*, *creditfactuur*).

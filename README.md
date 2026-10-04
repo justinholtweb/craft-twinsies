@@ -10,7 +10,7 @@ Requires **PHP 8.2+**, **Craft CMS 5.3+** and **Craft Commerce 5.0+**. No `ext-s
 
 ## Two ways to post an order
 
-Twinfield's invoicing module is a separate product, and plenty of Dutch shops do not have it — they send their own invoices and only need the bookkeeping. So Twinsies does both, and you pick per site.
+Twinfield's invoicing module is a separate product, and plenty of Dutch shops do not have it — they send their own invoices and only need the bookkeeping. So Twinsies does both, and you pick one in the settings.
 
 **Sales invoice** produces a document Twinfield can print, email and chase.
 
