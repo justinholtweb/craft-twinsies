@@ -103,8 +103,11 @@ class AuthController extends Controller
         Plugin::getInstance()->getAuth()->disconnect();
         Plugin::getInstance()->getMeta()->flush();
 
-        Craft::$app->getSession()->setNotice(Craft::t('twinsies', 'Disconnected from Twinfield.'));
+        // Posted with Craft.sendActionRequest, which treats a redirect as a failure; the page
+        // reloads itself once this succeeds.
+        $message = Craft::t('twinsies', 'Disconnected from Twinfield.');
+        Craft::$app->getSession()->setSuccess($message);
 
-        return $this->redirect(UrlHelper::cpUrl('settings/plugins/twinsies'));
+        return $this->asSuccess($message);
     }
 }

@@ -30,6 +30,12 @@ use justinholtweb\twinsies\Plugin;
  */
 class Customers extends Component
 {
+    /**
+     * Stands in for a debtor code Twinfield has not assigned yet, in a preview only. Never sent:
+     * a real push writes the debtor first and uses the code Twinfield answers with.
+     */
+    public const PREVIEW_NEW_CODE = '(new)';
+
     public const DIMENSION_TYPE = 'DEB';
 
     public const SOURCE_USER = 'user';
@@ -76,6 +82,51 @@ class Customers extends Component
         $this->rememberCode($office, $sourceType, $sourceKey, $written, $this->debtorName($order));
 
         return $written;
+    }
+
+    /**
+     * The debtor code {@see resolveForOrder()} would use, without writing anything to Twinfield.
+     *
+     * For Preview XML. Where a push would create or update the debtor first, this says so in
+     * `$warnings` and returns the code it would ask for — or {@see PREVIEW_NEW_CODE} where
+     * Twinfield assigns the code itself, which no preview can know.
+     *
+     * @param string[] $warnings
+     */
+    public function peekForOrder(Order $order, array &$warnings = []): ?string
+    {
+        $settings = Plugin::getInstance()->getSettings();
+
+        if ($settings->guestCustomerCode !== '' && !$order->getCustomer()) {
+            return $settings->guestCustomerCode;
+        }
+
+        [$sourceType, $sourceKey] = $this->identify($order);
+        $existing = $this->getStoredCode($settings->getOffice(), $sourceType, $sourceKey);
+
+        if (!$settings->syncCustomers) {
+            return $existing ?: ($settings->guestCustomerCode ?: null);
+        }
+
+        if ($existing !== null) {
+            if ($settings->updateExistingCustomers) {
+                $warnings[] = Craft::t('twinsies', 'Posting updates debtor {code} in Twinfield first.', ['code' => $existing]);
+            }
+
+            return $existing;
+        }
+
+        $code = $this->deriveCode($order, $sourceType, $sourceKey);
+
+        if ($code === null) {
+            $warnings[] = Craft::t('twinsies', 'Posting creates a new debtor in Twinfield first, and Twinfield chooses its code.');
+
+            return self::PREVIEW_NEW_CODE;
+        }
+
+        $warnings[] = Craft::t('twinsies', 'Posting creates debtor {code} in Twinfield first.', ['code' => $code]);
+
+        return $code;
     }
 
     /**

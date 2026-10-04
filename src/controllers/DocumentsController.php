@@ -82,8 +82,9 @@ class DocumentsController extends Controller
      * Build an order's document without sending it.
      *
      * This runs the *same* builder the push does, so what comes back is what Twinfield would get.
-     * That includes resolving the debtor and any auto-created articles, which writes to Twinfield
-     * — so a preview needs the same permission as a push, and a configured plugin.
+     * It runs as a dry run — the debtor and articles a push would create are named in the warnings
+     * rather than written — but it still reads Twinfield, so it needs the same permission as a push
+     * and a configured plugin.
      */
     public function actionPreview(): Response
     {
@@ -104,7 +105,7 @@ class DocumentsController extends Controller
         }
 
         try {
-            $built = Plugin::getInstance()->getDocuments()->build($order, $kind);
+            $built = Plugin::getInstance()->getDocuments()->build($order, $kind, dryRun: true);
         } catch (\Throwable $e) {
             return $this->asJson(['ok' => false, 'message' => $e->getMessage()]);
         }
@@ -244,9 +245,7 @@ class DocumentsController extends Controller
             return $this->asJson(['success' => true, 'message' => $message]);
         }
 
-        Craft::$app->getSession()->setNotice($message);
-
-        return $this->redirectToPostedUrl();
+        return $this->asSuccess($message);
     }
 
     private function failure(string $message): Response

@@ -1189,6 +1189,32 @@ try {
     $invoiceVariant = makeProduct('TW-INV-' . StringHelper::randomString(4), 49.50)->getVariants()[0];
     $invoiceOrder = makeOrder([['variant' => $invoiceVariant, 'qty' => 2]]);
 
+    check('a preview writes nothing to Twinfield, and says what a push would create', function() {
+        global $plugin;
+        // Preview once created the debtor and any articles, and so did a build that then refused
+        // to reconcile.
+        settings(['mode' => Settings::MODE_SALES_INVOICE, 'guestCustomerCode' => '', 'syncCustomers' => true,
+            'autoCreateArticles' => true, 'defaultArticle' => 'TWDRY']);
+
+        $variant = makeProduct('TW-DRY-' . StringHelper::randomString(4), 20.00)->getVariants()[0];
+        $order = makeOrder([['variant' => $variant, 'qty' => 1]]);
+
+        $history = scriptTwinfield([]);
+        try {
+            $built = $plugin->getDocuments()->build($order, dryRun: true);
+        } finally {
+            settings(['syncCustomers' => false, 'autoCreateArticles' => false, 'defaultArticle' => '']);
+        }
+
+        if (count($history) !== 0) {
+            return 'sent ' . count($history) . ' requests';
+        }
+
+        $said = implode(' | ', $built->warnings);
+
+        return (str_contains($said, 'debtor') && str_contains($said, 'article')) ?: $said;
+    });
+
     check('the header carries the office, invoice type, dates and status', function() use ($invoiceOrder) {
         global $plugin;
         settings(['mode' => Settings::MODE_SALES_INVOICE, 'guestCustomerCode' => '1000', 'syncCustomers' => false]);

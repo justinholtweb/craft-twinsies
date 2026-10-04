@@ -67,15 +67,17 @@ class Documents extends Component
      * @param string $kind {@see Document::KIND_INVOICE} or {@see Document::KIND_CREDIT_NOTE}
      * @param float|null $creditAmount for a credit note, the gross amount being credited. Null
      *                                 credits the whole order.
+     * @param bool $dryRun write nothing to Twinfield: for Preview XML. The debtor and any articles
+     *                     a push would create are named in the warnings instead.
      * @throws \RuntimeException when the order cannot be expressed as a Twinfield document at all
      */
-    public function build(Order $order, string $kind = Document::KIND_INVOICE, ?float $creditAmount = null): BuiltDocument
+    public function build(Order $order, string $kind = Document::KIND_INVOICE, ?float $creditAmount = null, bool $dryRun = false): BuiltDocument
     {
         $settings = Plugin::getInstance()->getSettings();
         $warnings = [];
+        $articles = [];
 
-        $customerCode = $this->resolveCustomer($order, $warnings);
-        $lines = $this->buildLines($order, $warnings);
+        $lines = $this->collectLines($order, $warnings, $articles);
 
         if ($kind === Document::KIND_CREDIT_NOTE) {
             $lines = $this->creditLines($lines, $order, $creditAmount, $warnings);
@@ -89,6 +91,19 @@ class Documents extends Component
         // chance to render a total nobody can explain.
         if ($kind === Document::KIND_INVOICE) {
             $lines = $this->reconcileAgainstOrder($order, $lines, $warnings);
+        }
+
+        // Only now touch Twinfield: every refusal above has had its chance, so a build that is
+        // going to fail never leaves a debtor or an article behind in the books.
+        if ($dryRun) {
+            $customerCode = Plugin::getInstance()->getCustomers()->peekForOrder($order, $warnings);
+
+            foreach ($articles as $article) {
+                $warnings[] = Craft::t('twinsies', 'Posting creates article {code} in Twinfield first, if it does not exist yet.', ['code' => $article[0]]);
+            }
+        } else {
+            $this->ensureArticles($articles);
+            $customerCode = $this->resolveCustomer($order, $warnings);
         }
 
         $gross = array_sum(array_map(static fn(array $line) => $line['net'] + $line['tax'], $lines));
@@ -385,6 +400,35 @@ class Documents extends Component
      */
     public function buildLines(Order $order, array &$warnings = []): array
     {
+        $articles = [];
+        $lines = $this->collectLines($order, $warnings, $articles);
+        $this->ensureArticles($articles);
+
+        return $lines;
+    }
+
+    /**
+     * @param array<int, array{0: string, 1: string, 2: string|null, 3: float}> $articles
+     */
+    private function ensureArticles(array $articles): void
+    {
+        $mapping = Plugin::getInstance()->getMapping();
+
+        foreach ($articles as [$code, $name, $vatCode, $unitPrice]) {
+            $mapping->ensureArticle($code, $name, $vatCode, $unitPrice);
+        }
+    }
+
+    /**
+     * The lines, and the articles that would have to exist in Twinfield first — collected rather
+     * than created, so nothing is written until the build is known to succeed.
+     *
+     * @param string[] $warnings
+     * @param array<int, array{0: string, 1: string, 2: string|null, 3: float}> $articles
+     * @return array<int, array<string, mixed>>
+     */
+    private function collectLines(Order $order, array &$warnings, array &$articles): array
+    {
         $mapping = Plugin::getInstance()->getMapping();
         $settings = Plugin::getInstance()->getSettings();
         $lines = [];
@@ -408,12 +452,12 @@ class Documents extends Component
             $vatCode = $map->vatCode ?: $mapping->vatCodeFor($net, $tax['tax'], $tax['categoryHandle']);
 
             if ($settings->autoCreateArticles && $map->article) {
-                $mapping->ensureArticle(
+                $articles[$map->article] ??= [
                     $map->article,
                     (string)$lineItem->getDescription(),
                     $vatCode,
                     $lineItem->qty > 0 ? $net / $lineItem->qty : $net,
-                );
+                ];
             }
 
             $lines[] = [

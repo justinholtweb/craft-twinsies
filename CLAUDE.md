@@ -43,7 +43,10 @@ The hard parts are not the HTTP:
 
 1. **`services\Documents::build()` is the only place a Commerce order becomes Twinfield XML.**
    The CP "Preview XML" button, `twinsies/sync/preview` and the real push all call it, so a preview
-   is byte-identical to what Twinfield receives.
+   is what Twinfield receives. Previews pass `dryRun`: the debtor and articles a push would create
+   are named in the warnings rather than written (a debtor whose code Twinfield assigns shows as
+   `(new)`). Every refusal — nothing to post, totals that do not reconcile — happens **before**
+   anything is written, so a build that fails never leaves a debtor or article behind.
 2. **`services\Sync::record()` is the only place a document row is created, and `push()` the only
    place one is sent.** The unique index on `twinsies_documents (orderId, sourceKey)` is what makes
    "has this been posted?" a fact; the **per-order mutex** in `push()` is what stops two workers

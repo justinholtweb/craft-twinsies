@@ -164,7 +164,7 @@ class SyncController extends Controller
         }
 
         try {
-            $built = Plugin::getInstance()->getDocuments()->build($order, $kind);
+            $built = Plugin::getInstance()->getDocuments()->build($order, $kind, dryRun: true);
         } catch (\Throwable $e) {
             $this->stderr("Could not build the document: {$e->getMessage()}\n", Console::FG_RED);
 

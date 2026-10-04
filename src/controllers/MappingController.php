@@ -103,9 +103,11 @@ class MappingController extends Controller
             }
         }
 
-        Craft::$app->getSession()->setNotice(Craft::t('twinsies', '{count} mapping(s) saved.', ['count' => $saved]));
+        // Set as a flash too: the buttons that post here reload the page afterwards.
+        $message = Craft::t('twinsies', '{count} mapping(s) saved.', ['count' => $saved]);
+        Craft::$app->getSession()->setSuccess($message);
 
-        return $this->redirectToPostedUrl();
+        return $this->asSuccess($message);
     }
 
     /**
@@ -131,8 +133,10 @@ class MappingController extends Controller
         $mapKey = (string)Craft::$app->getRequest()->getRequiredBodyParam('mapKey');
         Plugin::getInstance()->getMapping()->deleteMap($mapKey);
 
-        Craft::$app->getSession()->setNotice(Craft::t('twinsies', 'Mapping removed.'));
+        // Set as a flash too: the buttons that post here reload the page afterwards.
+        $message = Craft::t('twinsies', 'Mapping removed.');
+        Craft::$app->getSession()->setSuccess($message);
 
-        return $this->redirectToPostedUrl();
+        return $this->asSuccess($message);
     }
 }

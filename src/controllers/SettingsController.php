@@ -48,8 +48,10 @@ class SettingsController extends Controller
 
         Plugin::getInstance()->getMeta()->flush();
 
-        Craft::$app->getSession()->setNotice(Craft::t('twinsies', 'Twinfield lists refreshed.'));
+        // Set as a flash too: the buttons that post here reload the page afterwards.
+        $message = Craft::t('twinsies', 'Twinfield lists refreshed.');
+        Craft::$app->getSession()->setSuccess($message);
 
-        return $this->redirectToPostedUrl();
+        return $this->asSuccess($message);
     }
 }

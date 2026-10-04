@@ -79,9 +79,11 @@ class LogController extends Controller
 
         $deleted = Plugin::getInstance()->getLog()->clear();
 
-        Craft::$app->getSession()->setNotice(Craft::t('twinsies', '{count} log entries deleted.', ['count' => $deleted]));
+        // Set as a flash too: the buttons that post here reload the page afterwards.
+        $message = Craft::t('twinsies', '{count} log entries deleted.', ['count' => $deleted]);
+        Craft::$app->getSession()->setSuccess($message);
 
-        return $this->redirectToPostedUrl();
+        return $this->asSuccess($message);
     }
 
     public function actionPrune(): Response
@@ -91,8 +93,10 @@ class LogController extends Controller
 
         $deleted = Plugin::getInstance()->getLog()->prune();
 
-        Craft::$app->getSession()->setNotice(Craft::t('twinsies', '{count} old log entries deleted.', ['count' => $deleted]));
+        // Set as a flash too: the buttons that post here reload the page afterwards.
+        $message = Craft::t('twinsies', '{count} old log entries deleted.', ['count' => $deleted]);
+        Craft::$app->getSession()->setSuccess($message);
 
-        return $this->redirectToPostedUrl();
+        return $this->asSuccess($message);
     }
 }
