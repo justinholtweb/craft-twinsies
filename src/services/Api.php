@@ -373,13 +373,13 @@ class Api extends Component
                     throw TwinfieldException::make($lastError, retryable: $retryable);
                 }
             } catch (ConnectException|RequestException $e) {
-                $lastError = 'Could not reach Twinfield: ' . $e->getMessage();
+                $lastError = Craft::t('twinsies', 'Could not reach Twinfield: {reason}', ['reason' => $e->getMessage()]);
 
                 // A write that may have arrived is not resent: a read timeout looks exactly like a
                 // refused connection from here, and Twinfield is known to accept a large document
                 // and then time out on it. Two invoices are worse than one failed push.
                 if (!$idempotent && !$this->neverSent($e)) {
-                    $lastError = 'Twinfield may have received this before the connection failed, so it was not sent again. Check Twinfield before posting it again. (' . $e->getMessage() . ')';
+                    $lastError = Craft::t('twinsies', 'Twinfield may have received this before the connection failed, so it was not sent again. Check Twinfield before posting it again. ({reason})', ['reason' => $e->getMessage()]);
                     $plugin->getLog()->write($action, [
                         'level' => LogEntry::LEVEL_ERROR,
                         'durationMs' => (int)round((microtime(true) - $started) * 1000),
@@ -486,7 +486,7 @@ class Api extends Component
                     $text = trim($nodes->item(0)->textContent);
 
                     if ($text !== '') {
-                        return "Twinfield returned HTTP {$status}: {$text}";
+                        return Craft::t('twinsies', 'Twinfield returned HTTP {status}: {reason}', ['status' => $status, 'reason' => $text]);
                     }
                 }
             }
@@ -496,7 +496,9 @@ class Api extends Component
 
         $snippet = trim(mb_substr(strip_tags($body), 0, 200));
 
-        return "Twinfield returned HTTP {$status}" . ($snippet !== '' ? ": {$snippet}" : '.');
+        return $snippet !== ''
+            ? Craft::t('twinsies', 'Twinfield returned HTTP {status}: {reason}', ['status' => $status, 'reason' => $snippet])
+            : Craft::t('twinsies', 'Twinfield returned HTTP {status}.', ['status' => $status]);
     }
 
     private function extractElementText(DOMDocument $doc, string $localName): ?string

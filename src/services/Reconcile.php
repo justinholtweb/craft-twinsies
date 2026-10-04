@@ -99,13 +99,13 @@ class Reconcile extends Component
         ], $document->office, 'reconcile.read');
 
         if (!Xml::succeeded($response)) {
-            throw new \RuntimeException('Twinfield would not return the transaction: ' . Xml::summariseErrors($response));
+            throw new \RuntimeException(Craft::t('twinsies', 'Twinfield would not return the transaction: {reason}', ['reason' => Xml::summariseErrors($response)]));
         }
 
         $state = $this->readTotalLine($response);
 
         if ($state === null) {
-            throw new \RuntimeException('The transaction Twinfield returned has no total line with an open value to read.');
+            throw new \RuntimeException(Craft::t('twinsies', 'The transaction Twinfield returned has no total line with an open value to read.'));
         }
 
         $wasPaid = $document->isPaid();

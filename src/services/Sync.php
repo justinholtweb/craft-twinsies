@@ -166,7 +166,7 @@ class Sync extends Component
         $document = $this->getDocument($order->id, $sourceKey);
 
         if ($document === null) {
-            throw new \RuntimeException('Twinsies could not record a document row for this order.');
+            throw new \RuntimeException(Craft::t('twinsies', 'Twinsies could not record a document row for this order.'));
         }
 
         $document->setOrder($order);

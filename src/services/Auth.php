@@ -117,7 +117,7 @@ class Auth extends Component
         $this->session()?->remove(self::STATE_SESSION_KEY);
 
         if (!$expected || !hash_equals((string)$expected, $state)) {
-            throw new \RuntimeException('The authorisation response did not match this session. Start the connection again.');
+            throw new \RuntimeException(Craft::t('twinsies', 'The authorisation response did not match this session. Start the connection again.'));
         }
 
         $settings = Plugin::getInstance()->getSettings();
@@ -130,7 +130,7 @@ class Auth extends Component
 
         if (empty($token['refresh_token'])) {
             throw new \RuntimeException(
-                'Twinfield returned no refresh token. The app registration is missing the `offline_access` scope.'
+                Craft::t('twinsies', 'Twinfield returned no refresh token. The app registration is missing the `offline_access` scope.')
             );
         }
 
@@ -147,12 +147,12 @@ class Auth extends Component
         $connection = $this->getConnection();
 
         if ($connection === null || $connection->refreshToken === null) {
-            throw new \RuntimeException('Twinsies is not connected to Twinfield.');
+            throw new \RuntimeException(Craft::t('twinsies', 'Twinsies is not connected to Twinfield.'));
         }
 
         if ($connection->clientIdHash !== $this->clientIdHash()) {
             throw new \RuntimeException(
-                'The Twinfield client ID has changed since this site was connected. Reconnect from the settings screen.'
+                Craft::t('twinsies', 'The Twinfield client ID has changed since this site was connected. Reconnect from the settings screen.')
             );
         }
 
@@ -160,7 +160,7 @@ class Auth extends Component
             return $connection->accessToken;
         }
 
-        return $this->refresh()->accessToken ?? throw new \RuntimeException('Twinfield returned no access token.');
+        return $this->refresh()->accessToken ?? throw new \RuntimeException(Craft::t('twinsies', 'Twinfield returned no access token.'));
     }
 
     /**
@@ -178,7 +178,7 @@ class Auth extends Component
         $refreshed = $this->refresh();
 
         if (!$refreshed->clusterUrl) {
-            throw new \RuntimeException('Twinfield did not report a cluster URL for this access token.');
+            throw new \RuntimeException(Craft::t('twinsies', 'Twinfield did not report a cluster URL for this access token.'));
         }
 
         return $this->checkClusterUrl($refreshed->clusterUrl);
@@ -195,7 +195,7 @@ class Auth extends Component
         $host = strtolower($parts['host'] ?? '');
 
         if (($parts['scheme'] ?? '') !== 'https' || ($host !== 'twinfield.com' && !str_ends_with($host, '.twinfield.com'))) {
-            throw new \RuntimeException('Twinfield reported a cluster URL that is not an https twinfield.com host. Reconnect from the settings screen.');
+            throw new \RuntimeException(Craft::t('twinsies', 'Twinfield reported a cluster URL that is not an https twinfield.com host. Reconnect from the settings screen.'));
         }
 
         return rtrim($url, '/');
@@ -212,7 +212,7 @@ class Auth extends Component
         $connection = $this->getConnection();
 
         if ($connection === null || $connection->refreshToken === null) {
-            throw new \RuntimeException('Twinsies is not connected to Twinfield.');
+            throw new \RuntimeException(Craft::t('twinsies', 'Twinsies is not connected to Twinfield.'));
         }
 
         $token = $this->requestToken([
@@ -248,19 +248,19 @@ class Auth extends Component
                 'timeout' => Plugin::getInstance()->getSettings()->timeout,
             ]);
         } catch (TransferException) {
-            throw new \RuntimeException('Could not reach Twinfield to validate the access token.');
+            throw new \RuntimeException(Craft::t('twinsies', 'Could not reach Twinfield to validate the access token.'));
         }
 
         $body = (string)$response->getBody();
 
         if ($response->getStatusCode() !== 200) {
-            throw new \RuntimeException('Twinfield rejected the access token: ' . ($body ?: 'HTTP ' . $response->getStatusCode()));
+            throw new \RuntimeException(Craft::t('twinsies', 'Twinfield rejected the access token: {reason}', ['reason' => $body ?: 'HTTP ' . $response->getStatusCode()]));
         }
 
         $decoded = json_decode($body, true);
 
         if (!is_array($decoded)) {
-            throw new \RuntimeException('Twinfield returned an unreadable token validation response.');
+            throw new \RuntimeException(Craft::t('twinsies', 'Twinfield returned an unreadable token validation response.'));
         }
 
         return $decoded;
@@ -284,7 +284,7 @@ class Auth extends Component
         $settings = Plugin::getInstance()->getSettings();
 
         if (!$settings->hasCredentials()) {
-            throw new \RuntimeException('No Twinfield client ID and secret are configured.');
+            throw new \RuntimeException(Craft::t('twinsies', 'No Twinfield client ID and secret are configured.'));
         }
 
         // Credentials go in the form body rather than an Authorization header. Twinfield's
@@ -303,7 +303,7 @@ class Auth extends Component
             // `TransferException`, not `RequestException`: in Guzzle 7 a timeout or refused
             // connection is a `ConnectException`, which is not a `RequestException`. The message
             // is safe to pass on here — the credentials are in the POST body, not the URL.
-            throw new \RuntimeException('Could not reach Twinfield to exchange the token: ' . $e->getMessage(), 0, $e);
+            throw new \RuntimeException(Craft::t('twinsies', 'Could not reach Twinfield to exchange the token: {reason}', ['reason' => $e->getMessage()]), 0, $e);
         }
 
         $body = (string)$response->getBody();
@@ -314,7 +314,7 @@ class Auth extends Component
                 ? ($decoded['error_description'] ?? $decoded['error'] ?? $body)
                 : $body;
 
-            throw new \RuntimeException('Twinfield refused the token request: ' . ($error ?: 'HTTP ' . $response->getStatusCode()));
+            throw new \RuntimeException(Craft::t('twinsies', 'Twinfield refused the token request: {reason}', ['reason' => $error ?: 'HTTP ' . $response->getStatusCode()]));
         }
 
         return $decoded;

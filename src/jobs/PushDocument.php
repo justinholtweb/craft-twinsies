@@ -61,7 +61,7 @@ class PushDocument extends BaseJob implements RetryableJobInterface
 
             // Surfacing this as a failed job is the point: a silently parked document is exactly
             // the failure mode an accounting integration must not have.
-            throw new \RuntimeException($fresh->lastError ?: 'Twinfield rejected the document.');
+            throw new \RuntimeException($fresh->lastError ?: Craft::t('twinsies', 'Twinfield rejected the document.'));
         }
     }
 

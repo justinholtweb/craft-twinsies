@@ -84,7 +84,7 @@ class Documents extends Component
         }
 
         if (!$lines) {
-            throw new \RuntimeException('This order has nothing to post: every line came to zero.');
+            throw new \RuntimeException(Craft::t('twinsies', 'This order has nothing to post: every line came to zero.'));
         }
 
         // Reconcile against what the customer was actually charged, before either mode gets a
@@ -133,7 +133,7 @@ class Documents extends Component
         $invoiceType = $isCredit ? $settings->getCreditInvoiceType() : $settings->invoiceType;
 
         if ($customerCode === null) {
-            throw new \RuntimeException('No Twinfield debtor could be established for this order, and a sales invoice must name one.');
+            throw new \RuntimeException(Craft::t('twinsies', 'No Twinfield debtor could be established for this order, and a sales invoice must name one.'));
         }
 
         $doc = Xml::document('salesinvoice', ['raisewarning' => 'false']);
@@ -241,11 +241,11 @@ class Documents extends Component
         $daybook = $isCredit ? $settings->getCreditDaybook() : $settings->daybook;
 
         if (trim($settings->debtorGl) === '') {
-            throw new \RuntimeException('No debtor ledger account is configured, and a sales transaction needs one for its total line.');
+            throw new \RuntimeException(Craft::t('twinsies', 'No debtor ledger account is configured, and a sales transaction needs one for its total line.'));
         }
 
         if ($customerCode === null) {
-            throw new \RuntimeException('No Twinfield debtor could be established for this order, and a sales transaction must name one.');
+            throw new \RuntimeException(Craft::t('twinsies', 'No Twinfield debtor could be established for this order, and a sales transaction must name one.'));
         }
 
         // An invoice debits the debtor and credits revenue; a credit note is the mirror image.
@@ -340,11 +340,10 @@ class Documents extends Component
             // Grouping lines onto one journal line per account and VAT code rounds; it cannot
             // move money. A difference this size means something upstream is wrong, and a journal
             // that balances by way of an unexplained revenue posting is worse than no journal.
-            throw new \RuntimeException(sprintf(
-                'The journal lines come to %s but the total line would be %s. Nothing was posted.',
-                Amounts::money($expected),
-                Amounts::money($gross),
-            ));
+            throw new \RuntimeException(Craft::t('twinsies', 'The journal lines come to {lines} but the total line would be {total}. Nothing was posted.', [
+                'lines' => Amounts::money($expected),
+                'total' => Amounts::money($gross),
+            ]));
         }
 
         if (!Amounts::equal($drift, 0.0) && abs($drift) > self::VAT_TOLERANCE) {
@@ -552,7 +551,7 @@ class Documents extends Component
         }
 
         if (Amounts::equal($gross, 0.0)) {
-            throw new \RuntimeException('This order has a zero total, so a partial credit cannot be apportioned across it.');
+            throw new \RuntimeException(Craft::t('twinsies', 'This order has a zero total, so a partial credit cannot be apportioned across it.'));
         }
 
         $ratio = abs($creditAmount) / abs($gross);
@@ -674,14 +673,16 @@ class Documents extends Component
         if (abs($drift) > self::ROUNDING_TOLERANCE) {
             $unknown = $this->unknownAdjustmentTypes($order);
 
-            throw new \RuntimeException(sprintf(
-                'The lines come to %s but the order totals %s. %sNothing was posted, because a difference this size is not rounding.',
-                Amounts::money($gross),
-                Amounts::money($orderTotal),
-                $unknown
-                    ? 'Twinsies does not know how to express these order adjustments: ' . implode(', ', $unknown) . '. '
-                    : '',
-            ));
+            throw new \RuntimeException($unknown
+                ? Craft::t('twinsies', 'The lines come to {lines} but the order totals {total}. Twinsies does not know how to express these order adjustments: {types}. Nothing was posted, because a difference this size is not rounding.', [
+                    'lines' => Amounts::money($gross),
+                    'total' => Amounts::money($orderTotal),
+                    'types' => implode(', ', $unknown),
+                ])
+                : Craft::t('twinsies', 'The lines come to {lines} but the order totals {total}. Nothing was posted, because a difference this size is not rounding.', [
+                    'lines' => Amounts::money($gross),
+                    'total' => Amounts::money($orderTotal),
+                ]));
         }
 
         $warnings[] = Craft::t('twinsies', 'A {amount} rounding difference was booked to the default revenue account.', [
