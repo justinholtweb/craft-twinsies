@@ -23,6 +23,8 @@ class MappingController extends Controller
             return false;
         }
 
+        $this->requireCpRequest();
+
         $this->requirePermission('twinsies-manageMapping');
 
         return true;

@@ -105,7 +105,7 @@ class Reconcile extends Component
         $state = $this->readTotalLine($response);
 
         if ($state === null) {
-            throw new \RuntimeException('The transaction Twinfield returned has no total line to read an open value from.');
+            throw new \RuntimeException('The transaction Twinfield returned has no total line with an open value to read.');
         }
 
         $wasPaid = $document->isPaid();
@@ -210,10 +210,22 @@ class Reconcile extends Component
             // The docs say `<valueopen>`; the service sends `<openvalue>`. Reading only the
             // documented one means every invoice looks permanently unpaid.
             $open = Xml::childText($line, 'openvalue') ?? Xml::childText($line, 'valueopen');
+            $matchStatus = Xml::childText($line, 'matchstatus');
+
+            if ($open === null || !is_numeric($open)) {
+                // No open value at all is not "nothing open" — reading it that way records a
+                // Commerce payment nobody made. Only a line Twinfield itself calls matched is
+                // settled without one.
+                if ($matchStatus !== 'matched') {
+                    return null;
+                }
+
+                $open = '0';
+            }
 
             return [
-                'openValue' => $open !== null ? (float)$open : 0.0,
-                'matchStatus' => Xml::childText($line, 'matchstatus'),
+                'openValue' => (float)$open,
+                'matchStatus' => $matchStatus,
             ];
         }
 

@@ -59,8 +59,8 @@ class Log extends Component
                 'durationMs' => $data['durationMs'] ?? null,
                 'documentId' => $data['documentId'] ?? null,
                 'orderId' => $data['orderId'] ?? null,
-                'summary' => isset($data['summary']) ? mb_substr((string)$data['summary'], 0, 255) : null,
-                'message' => $data['message'] ?? null,
+                'summary' => isset($data['summary']) ? mb_substr($this->redact((string)$data['summary']), 0, 255) : null,
+                'message' => $this->redact($data['message'] ?? null),
                 'request' => $settings->logPayloads ? $this->redact($this->truncate($data['request'] ?? null)) : null,
                 'response' => $settings->logPayloads ? $this->truncate($data['response'] ?? null) : null,
                 'dateCreated' => Db::prepareDateForDb(new DateTime()),
@@ -188,15 +188,17 @@ class Log extends Component
      * carries a bearer token for their entire administration. A CP user allowed to read the log
      * is not necessarily someone who should be able to lift that token out of it.
      */
-    private function redact(?string $payload): ?string
+    public function redact(?string $payload): ?string
     {
         if ($payload === null) {
             return null;
         }
 
+        // The envelope's `<AccessToken>` element, and the `?token=` the validation endpoint takes
+        // in its query string — which is what a transport error message quotes back.
         return preg_replace(
-            '#(<[^>:]*:?AccessToken[^>]*>)[^<]*(</)#i',
-            '$1[redacted]$2',
+            ['#(<[^>:]*:?AccessToken[^>]*>)[^<]*(</)#i', '#([?&]token=)[^&\s"\'<>]+#i'],
+            ['$1[redacted]$2', '$1[redacted]'],
             $payload
         );
     }

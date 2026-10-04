@@ -402,6 +402,11 @@ class Settings extends Model
             [['office', 'invoiceType', 'daybook', 'creditInvoiceType', 'creditDaybook', 'bank'], 'string', 'max' => 16],
             [['debtorGl', 'defaultRevenueGl', 'shippingGl', 'discountGl', 'vatGl'], 'string', 'max' => 32],
             [['vatRateMap', 'vatCategoryMap', 'triggerStatusHandles'], 'safe'],
+            // Settings are written to project config, which gets committed. A secret pasted in as
+            // a literal would end up in git, so only an environment variable reference is taken.
+            [['clientSecret'], 'trim'],
+            [['clientSecret'], 'match', 'pattern' => '/^\$[A-Za-z_][A-Za-z0-9_]*$/', 'skipOnEmpty' => true,
+                'message' => Craft::t('twinsies', 'Use an environment variable for the client secret, for example $TWINFIELD_CLIENT_SECRET, so it never lands in project config.')],
         ];
     }
 

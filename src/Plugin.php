@@ -55,6 +55,12 @@ class Plugin extends BasePlugin
 
     public string $schemaVersion = '5.0.0';
     public bool $hasCpSettings = true;
+    /**
+     * Where admin changes are off, Craft renders the settings read-only rather than refusing the
+     * page. The Connect link is not an input, so it survives — which is the point: the grant is a
+     * database row and has to be made on the environment that uses it.
+     */
+    public bool $hasReadOnlyCpSettings = true;
     public bool $hasCpSection = true;
 
     /**
@@ -218,7 +224,7 @@ class Plugin extends BasePlugin
             ];
         }
 
-        if ($user->getIsAdmin() && Craft::$app->getConfig()->getGeneral()->allowAdminChanges) {
+        if ($user->getIsAdmin()) {
             $subNav['settings'] = [
                 'label' => Craft::t('twinsies', 'Settings'),
                 'url' => 'settings/plugins/twinsies',

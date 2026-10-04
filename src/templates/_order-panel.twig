@@ -43,18 +43,18 @@
                 </p>
             {% endfor %}
 
-            <div class="buttons" style="margin-top: 10px;">
-                <button type="button" class="btn small" data-twinsies-preview="{{ order.id }}">
-                    {{ 'Preview XML'|t('twinsies') }}
-                </button>
-                {% if canPush %}
+            {% if canPush %}
+                <div class="buttons" style="margin-top: 10px;">
+                    <button type="button" class="btn small" data-twinsies-preview="{{ order.id }}">
+                        {{ 'Preview XML'|t('twinsies') }}
+                    </button>
                     <button type="button" class="btn small submit" data-twinsies-push="{{ order.id }}"
                             {% if invoice and invoice.isSent() %}data-twinsies-force="1"{% endif %}>
                         {{ invoice and invoice.isSent() ? 'Post again'|t('twinsies') : 'Post to Twinfield'|t('twinsies') }}
                     </button>
-                {% endif %}
-                <span class="spinner hidden" data-twinsies-spinner></span>
-            </div>
+                    <span class="spinner hidden" data-twinsies-spinner></span>
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>

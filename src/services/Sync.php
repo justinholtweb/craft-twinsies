@@ -507,6 +507,9 @@ class Sync extends Component
 
     private function fail(Document $document, string $message, ?BuiltDocument $built = null): void
     {
+        // Shown to anyone who can view documents — never the place for a token.
+        $message = Plugin::getInstance()->getLog()->redact($message);
+
         $this->update($document, [
             'status' => Document::STATUS_FAILED,
             'attempts' => $document->attempts + 1,

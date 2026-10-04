@@ -6,7 +6,6 @@ use Craft;
 use craft\helpers\UrlHelper;
 use craft\web\Controller;
 use justinholtweb\twinsies\Plugin;
-use yii\web\ForbiddenHttpException;
 use yii\web\Response;
 
 /**
@@ -27,11 +26,12 @@ class AuthController extends Controller
             return false;
         }
 
-        $this->requireAdmin(false);
+        $this->requireCpRequest();
 
-        if (!Craft::$app->getConfig()->getGeneral()->allowAdminChanges) {
-            throw new ForbiddenHttpException('Administrative changes are disabled in this environment.');
-        }
+        // Deliberately not gated on `allowAdminChanges`: the grant is a database row, never
+        // project config, so production — where admin changes are usually off — is exactly where
+        // it has to be made.
+        $this->requireAdmin(false);
 
         return true;
     }

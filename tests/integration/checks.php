@@ -1931,6 +1931,38 @@ try {
         }
     });
 
+    check('a total line with no open value is an error, not a payment', function() use (&$reconcileDocument) {
+        global $plugin;
+        // Reading a missing open value as zero recorded a Commerce payment nobody made.
+        scriptTwinfield([soapResponse(
+            '<transaction result="1"><header><code>VRK</code><number>202600501</number></header><lines>'
+            . '<line type="total" id="1"><dim1>1300</dim1><value>60.00</value><matchstatus>available</matchstatus></line>'
+            . '</lines></transaction>'
+        )]);
+
+        try {
+            $plugin->getReconcile()->check($plugin->getSync()->getDocumentById($reconcileDocument->id));
+
+            return 'no exception';
+        } catch (RuntimeException $e) {
+            return str_contains($e->getMessage(), 'open value') ?: $e->getMessage();
+        }
+    });
+
+    check('a matched total line with no open value reads as settled', function() use (&$reconcileDocument) {
+        global $plugin;
+        scriptTwinfield([soapResponse(
+            '<transaction result="1"><header><code>VRK</code><number>202600501</number></header><lines>'
+            . '<line type="total" id="1"><dim1>1300</dim1><value>60.00</value><matchstatus>matched</matchstatus></line>'
+            . '</lines></transaction>'
+        )]);
+
+        $plugin->getReconcile()->check($plugin->getSync()->getDocumentById($reconcileDocument->id));
+        $fresh = $plugin->getSync()->getDocumentById($reconcileDocument->id);
+
+        return Amounts::equal((float)$fresh->openValue, 0.0) ?: 'open=' . var_export($fresh->openValue, true);
+    });
+
     settings(['reconcileEnabled' => false, 'invoiceStatus' => Settings::INVOICE_STATUS_CONCEPT]);
 
     // ---------------------------------------------------------------------

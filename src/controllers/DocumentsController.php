@@ -27,6 +27,8 @@ class DocumentsController extends Controller
             return false;
         }
 
+        $this->requireCpRequest();
+
         $this->requirePermission('twinsies-viewDocuments');
 
         return true;
@@ -80,15 +82,22 @@ class DocumentsController extends Controller
      * Build an order's document without sending it.
      *
      * This runs the *same* builder the push does, so what comes back is what Twinfield would get.
+     * That includes resolving the debtor and any auto-created articles, which writes to Twinfield
+     * — so a preview needs the same permission as a push, and a configured plugin.
      */
     public function actionPreview(): Response
     {
         $this->requirePostRequest();
         $this->requireAcceptsJson();
+        $this->requirePermission('twinsies-pushDocuments');
+
+        if (!Plugin::getInstance()->isConfigured()) {
+            return $this->asJson(['ok' => false, 'message' => Craft::t('twinsies', 'Connect to Twinfield and choose an administration first.')]);
+        }
 
         $orderId = (int)Craft::$app->getRequest()->getRequiredBodyParam('orderId');
         $kind = (string)Craft::$app->getRequest()->getBodyParam('kind', Document::KIND_INVOICE);
-        $order = Order::find()->id($orderId)->status(null)->one();
+        $order = Order::find()->id($orderId)->isCompleted(true)->status(null)->one();
 
         if ($order === null) {
             return $this->asJson(['ok' => false, 'message' => Craft::t('twinsies', 'Order not found.')]);

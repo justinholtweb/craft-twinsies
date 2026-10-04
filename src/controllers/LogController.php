@@ -25,6 +25,8 @@ class LogController extends Controller
             return false;
         }
 
+        $this->requireCpRequest();
+
         $this->requirePermission('twinsies-viewLog');
 
         return true;

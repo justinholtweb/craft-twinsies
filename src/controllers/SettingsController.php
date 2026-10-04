@@ -21,6 +21,8 @@ class SettingsController extends Controller
             return false;
         }
 
+        $this->requireCpRequest();
+
         $this->requireAdmin(false);
 
         return true;

@@ -9,7 +9,7 @@ use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use DateTime;
 use GuzzleHttp\Client;
-use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\TransferException;
 use justinholtweb\twinsies\db\Table;
 use justinholtweb\twinsies\models\Connection;
 use justinholtweb\twinsies\Plugin;
@@ -171,7 +171,7 @@ class Auth extends Component
         $connection = $this->getConnection();
 
         if ($connection?->clusterUrl) {
-            return rtrim($connection->clusterUrl, '/');
+            return $this->checkClusterUrl($connection->clusterUrl);
         }
 
         // No cluster cached yet — a refresh resolves one as part of validating the token.
@@ -181,7 +181,24 @@ class Auth extends Component
             throw new \RuntimeException('Twinfield did not report a cluster URL for this access token.');
         }
 
-        return rtrim($refreshed->clusterUrl, '/');
+        return $this->checkClusterUrl($refreshed->clusterUrl);
+    }
+
+    /**
+     * Every envelope carries the access token, so the cluster has to be Twinfield over https.
+     * Checked on the way in from the validation response and again on the way out of the table,
+     * so a row edited by hand cannot send the token anywhere else.
+     */
+    public function checkClusterUrl(string $url): string
+    {
+        $parts = parse_url($url);
+        $host = strtolower($parts['host'] ?? '');
+
+        if (($parts['scheme'] ?? '') !== 'https' || ($host !== 'twinfield.com' && !str_ends_with($host, '.twinfield.com'))) {
+            throw new \RuntimeException('Twinfield reported a cluster URL that is not an https twinfield.com host. Reconnect from the settings screen.');
+        }
+
+        return rtrim($url, '/');
     }
 
     /**
@@ -221,11 +238,18 @@ class Auth extends Component
      */
     public function validateAccessToken(string $accessToken): array
     {
-        $response = $this->http()->request('GET', self::VALIDATION_URL, [
-            'query' => ['token' => $accessToken],
-            'http_errors' => false,
-            'timeout' => Plugin::getInstance()->getSettings()->timeout,
-        ]);
+        // The token travels in the query string, so Guzzle's own message for a timeout or a
+        // refused connection contains it. That message would otherwise end up in a document's
+        // last error, the queue table and the Craft logs — never pass it on.
+        try {
+            $response = $this->http()->request('GET', self::VALIDATION_URL, [
+                'query' => ['token' => $accessToken],
+                'http_errors' => false,
+                'timeout' => Plugin::getInstance()->getSettings()->timeout,
+            ]);
+        } catch (TransferException) {
+            throw new \RuntimeException('Could not reach Twinfield to validate the access token.');
+        }
 
         $body = (string)$response->getBody();
 
@@ -275,7 +299,10 @@ class Auth extends Component
                 'http_errors' => false,
                 'timeout' => $settings->timeout,
             ]);
-        } catch (RequestException $e) {
+        } catch (TransferException $e) {
+            // `TransferException`, not `RequestException`: in Guzzle 7 a timeout or refused
+            // connection is a `ConnectException`, which is not a `RequestException`. The message
+            // is safe to pass on here — the credentials are in the POST body, not the URL.
             throw new \RuntimeException('Could not reach Twinfield to exchange the token: ' . $e->getMessage(), 0, $e);
         }
 
@@ -308,7 +335,7 @@ class Auth extends Component
             'accessToken' => $this->encrypt($accessToken),
             'refreshToken' => $this->encrypt((string)$token['refresh_token']),
             'expiresAt' => Db::prepareDateForDb($expiresAt),
-            'clusterUrl' => $validation['twf.clusterUrl'] ?? null,
+            'clusterUrl' => isset($validation['twf.clusterUrl']) ? $this->checkClusterUrl((string)$validation['twf.clusterUrl']) : null,
             'scope' => is_array($token['scope'] ?? null) ? implode(' ', $token['scope']) : ($token['scope'] ?? self::SCOPES),
             'twinfieldUser' => $validation['twf.userCode'] ?? $validation['sub'] ?? null,
             'dateUpdated' => Db::prepareDateForDb(new DateTime()),
