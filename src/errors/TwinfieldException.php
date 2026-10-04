@@ -18,6 +18,12 @@ class TwinfieldException extends \RuntimeException
     public bool $retryable = false;
 
     /**
+     * Whether Twinfield may have accepted the document anyway — the connection failed after it
+     * was sent. Such a document is parked rather than retried, since a resend could post it twice.
+     */
+    public bool $unconfirmed = false;
+
+    /**
      * The field-level messages, innermost first, when the failure came from a document.
      *
      * @var array<int, array{type: string, field: string, message: string}>

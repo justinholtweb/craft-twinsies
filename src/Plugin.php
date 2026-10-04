@@ -6,9 +6,10 @@ use Craft;
 use craft\base\Model;
 use craft\base\Plugin as BasePlugin;
 use craft\commerce\elements\Order;
-use craft\commerce\events\RefundTransactionEvent;
+use craft\commerce\events\TransactionEvent;
 use craft\commerce\services\OrderHistories;
-use craft\commerce\services\Payments;
+use craft\commerce\records\Transaction as TransactionRecord;
+use craft\commerce\services\Transactions;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
 use craft\services\UserPermissions;
@@ -332,26 +333,38 @@ class Plugin extends BasePlugin
 
     /**
      * A Commerce refund becomes a credit document.
+     *
+     * Not `Payments::EVENT_AFTER_REFUND_TRANSACTION`: its `transaction` is the *parent* purchase,
+     * it fires for a refund the gateway declined, and never for one settled later by webhook.
+     * Every saved transaction comes through here instead, and only a successful refund counts.
+     * The source key is the refund's own hash, so the save that marks a webhook-settled refund
+     * successful a second time finds the row that is already there.
      */
     private function _registerRefundTrigger(): void
     {
         Event::on(
-            Payments::class,
-            Payments::EVENT_AFTER_REFUND_TRANSACTION,
-            static function(RefundTransactionEvent $event) {
-                $transaction = $event->transaction ?? null;
-
-                if ($transaction === null) {
-                    return;
-                }
-
-                $order = $transaction->getOrder();
-
-                if (!$order instanceof Order || !$order->id) {
-                    return;
-                }
-
+            Transactions::class,
+            Transactions::EVENT_AFTER_SAVE_TRANSACTION,
+            static function(TransactionEvent $event) {
+                // Fail open, always — everything below sits inside the try, because this runs in
+                // the request that refunded the customer.
                 try {
+                    $transaction = $event->transaction;
+
+                    if (
+                        $transaction->type !== TransactionRecord::TYPE_REFUND
+                        || $transaction->status !== TransactionRecord::STATUS_SUCCESS
+                        || !Plugin::getInstance()->isConfigured()
+                    ) {
+                        return;
+                    }
+
+                    $order = $transaction->getOrder();
+
+                    if (!$order instanceof Order || !$order->id) {
+                        return;
+                    }
+
                     Plugin::getInstance()->getSync()->pushRefund(
                         $order,
                         $transaction,

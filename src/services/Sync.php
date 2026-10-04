@@ -11,6 +11,7 @@ use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use DateTime;
 use justinholtweb\twinsies\db\Table;
+use justinholtweb\twinsies\errors\TwinfieldException;
 use justinholtweb\twinsies\helpers\Amounts;
 use justinholtweb\twinsies\helpers\Xml;
 use justinholtweb\twinsies\models\BuiltDocument;
@@ -262,7 +263,7 @@ class Sync extends Component
                 $document->id,
             );
         } catch (\Throwable $e) {
-            $this->fail($document, $e->getMessage(), $built);
+            $this->fail($document, $e->getMessage(), $built, $e instanceof TwinfieldException && $e->unconfirmed);
 
             return false;
         }
@@ -505,14 +506,23 @@ class Sync extends Component
         ]);
     }
 
-    private function fail(Document $document, string $message, ?BuiltDocument $built = null): void
+    /**
+     * @param bool $park take the document out of automatic retries — for a write Twinfield may
+     * have accepted, which only a person who has checked Twinfield should send again.
+     */
+    private function fail(Document $document, string $message, ?BuiltDocument $built = null, bool $park = false): void
     {
         // Shown to anyone who can view documents — never the place for a token.
         $message = Plugin::getInstance()->getLog()->redact($message);
+        $attempts = $document->attempts + 1;
+
+        if ($park) {
+            $attempts = max($attempts, Plugin::getInstance()->getSettings()->maxAttempts);
+        }
 
         $this->update($document, [
             'status' => Document::STATUS_FAILED,
-            'attempts' => $document->attempts + 1,
+            'attempts' => $attempts,
             'lastError' => mb_substr($message, 0, 2000),
             'payloadHash' => $built?->hash() ?? $document->payloadHash,
         ]);

@@ -60,8 +60,10 @@ class Api extends Component
      * the callers that do want one.
      *
      * @param string $action a short label for the log, e.g. `push.invoice`
+     * @param bool $idempotent whether sending it twice is harmless. `read()` and `listing()` say
+     * so; anything else is a write, and is never resent once Twinfield may have received it.
      */
-    public function process(string $xml, string $action = 'process', ?string $office = null, ?int $orderId = null, ?int $documentId = null): DOMDocument
+    public function process(string $xml, string $action = 'process', ?string $office = null, ?int $orderId = null, ?int $documentId = null, bool $idempotent = false): DOMDocument
     {
         $envelope = $this->buildProcessEnvelope($xml, $office);
 
@@ -73,6 +75,7 @@ class Api extends Component
             $xml,
             $orderId,
             $documentId,
+            $idempotent,
         );
 
         $result = $this->extractElementText($response, 'ProcessXmlStringResult');
@@ -162,7 +165,7 @@ class Api extends Component
             Xml::append($root, $name, $value);
         }
 
-        return $this->process(Xml::toString($doc), $action, $office);
+        return $this->process(Xml::toString($doc), $action, $office, idempotent: true);
     }
 
     /**
@@ -186,6 +189,7 @@ class Api extends Component
             Xml::toString($doc),
             "list.{$type}",
             $office === false ? '' : $office,
+            idempotent: true,
         );
     }
 
@@ -295,6 +299,7 @@ class Api extends Component
         string $logRequest,
         ?int $orderId = null,
         ?int $documentId = null,
+        bool $idempotent = true,
     ): DOMDocument {
         $plugin = Plugin::getInstance();
         $settings = $plugin->getSettings();
@@ -351,8 +356,9 @@ class Api extends Component
                 }
 
                 $lastError = $this->describeHttpFailure($status, $body);
+                $retryable = $this->isRetryable($status, $idempotent);
 
-                if (!$this->isRetryable($status) || $attempts >= $settings->maxAttempts) {
+                if (!$retryable || $attempts >= $settings->maxAttempts) {
                     $plugin->getLog()->write($action, [
                         'level' => LogEntry::LEVEL_ERROR,
                         'statusCode' => $status,
@@ -364,10 +370,30 @@ class Api extends Component
                         'documentId' => $documentId,
                     ]);
 
-                    throw TwinfieldException::make($lastError, retryable: $this->isRetryable($status));
+                    throw TwinfieldException::make($lastError, retryable: $retryable);
                 }
             } catch (ConnectException|RequestException $e) {
                 $lastError = 'Could not reach Twinfield: ' . $e->getMessage();
+
+                // A write that may have arrived is not resent: a read timeout looks exactly like a
+                // refused connection from here, and Twinfield is known to accept a large document
+                // and then time out on it. Two invoices are worse than one failed push.
+                if (!$idempotent && !$this->neverSent($e)) {
+                    $lastError = 'Twinfield may have received this before the connection failed, so it was not sent again. Check Twinfield before posting it again. (' . $e->getMessage() . ')';
+                    $plugin->getLog()->write($action, [
+                        'level' => LogEntry::LEVEL_ERROR,
+                        'durationMs' => (int)round((microtime(true) - $started) * 1000),
+                        'summary' => $lastError,
+                        'request' => $logRequest,
+                        'orderId' => $orderId,
+                        'documentId' => $documentId,
+                    ]);
+
+                    $exception = TwinfieldException::make($lastError, retryable: false, previous: $e);
+                    $exception->unconfirmed = true;
+
+                    throw $exception;
+                }
 
                 if ($attempts >= $settings->maxAttempts) {
                     $plugin->getLog()->write($action, [
@@ -417,9 +443,34 @@ class Api extends Component
         return substr($envelope, 0, $from) . $token . substr($envelope, $to);
     }
 
-    private function isRetryable(int $status): bool
+    /**
+     * A write is only resent on a status that means Twinfield did not process it: 429 and 503 are
+     * answered before the request reaches the service. A 500 or 504 may come after it posted.
+     */
+    private function isRetryable(int $status, bool $idempotent = true): bool
     {
+        if (!$idempotent) {
+            return $status === 429 || $status === 503;
+        }
+
         return $status === 429 || $status >= 500;
+    }
+
+    /**
+     * Whether a transport failure happened before any of the request left: the host did not
+     * resolve, refused the connection, or failed the TLS handshake. Anything else — a timeout
+     * above all — may have come after Twinfield read the whole body.
+     */
+    private function neverSent(\Throwable $e): bool
+    {
+        if (!$e instanceof ConnectException) {
+            return false;
+        }
+
+        $errno = $e->getHandlerContext()['errno'] ?? null;
+
+        // CURLE_COULDNT_RESOLVE_PROXY, _RESOLVE_HOST, _COULDNT_CONNECT, _SSL_CONNECT_ERROR
+        return in_array($errno, [5, 6, 7, 35], true);
     }
 
     private function describeHttpFailure(int $status, string $body): string

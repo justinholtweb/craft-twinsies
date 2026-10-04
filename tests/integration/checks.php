@@ -710,6 +710,59 @@ try {
         }
     });
 
+    check('a write that timed out is not sent again', function() {
+        global $plugin;
+        // A read timeout arrives as a ConnectException, exactly like a refused connection — and
+        // Twinfield may have posted the document before it timed out.
+        settings(['maxAttempts' => 3]);
+        $history = scriptTwinfield([
+            new GuzzleHttp\Exception\ConnectException('cURL error 28: timed out', new GuzzleHttp\Psr7\Request('POST', 'https://api.accounting.twinfield.com'), null, ['errno' => 28]),
+            soapResponse('<dimension result="1"/>'),
+        ]);
+
+        try {
+            $plugin->getApi()->process('<dimension><office>001</office><type>DEB</type><code>9999</code></dimension>', 'test.write');
+
+            return 'no exception';
+        } catch (TwinfieldException $e) {
+            settings(['maxAttempts' => 2]);
+
+            return (count($history) === 1 && $e->unconfirmed && !$e->retryable) ?: 'sent ' . count($history) . ', unconfirmed=' . var_export($e->unconfirmed, true);
+        }
+    });
+
+    check('a write that never connected is retried', function() {
+        global $plugin;
+        $history = scriptTwinfield([
+            new GuzzleHttp\Exception\ConnectException('cURL error 7: refused', new GuzzleHttp\Psr7\Request('POST', 'https://api.accounting.twinfield.com'), null, ['errno' => 7]),
+            soapResponse('<dimension result="1"/>'),
+        ]);
+
+        $plugin->getApi()->process('<dimension><office>001</office><type>DEB</type><code>9999</code></dimension>', 'test.write');
+
+        return count($history) === 2 ?: 'sent ' . count($history);
+    });
+
+    check('a 500 on a write is not retried, but a 503 is', function() {
+        global $plugin;
+        $history = scriptTwinfield([new GuzzleResponse(500, [], 'oops')]);
+
+        try {
+            $plugin->getApi()->process('<dimension><office>001</office><type>DEB</type><code>9999</code></dimension>', 'test.write');
+
+            return '500: no exception';
+        } catch (TwinfieldException) {
+            if (count($history) !== 1) {
+                return '500: sent ' . count($history);
+            }
+        }
+
+        $history = scriptTwinfield([new GuzzleResponse(503, [], 'busy'), soapResponse('<dimension result="1"/>')]);
+        $plugin->getApi()->process('<dimension><office>001</office><type>DEB</type><code>9999</code></dimension>', 'test.write');
+
+        return count($history) === 2 ?: '503: sent ' . count($history);
+    });
+
     check('a SOAP fault is reported by its faultstring, not its status code', function() {
         global $plugin;
         scriptTwinfield([new GuzzleResponse(500, [], '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><soap:Fault><faultstring>Toegang geweigerd</faultstring></soap:Fault></soap:Body></soap:Envelope>')]);
@@ -1760,6 +1813,55 @@ try {
         );
 
         return count($credits) === 2 ?: count($credits) . ' credit notes';
+    });
+
+    check('only a successful refund transaction triggers a credit note, for its own amount', function() {
+        global $plugin;
+        // The trigger once read the refund event's `transaction`, which is the parent purchase:
+        // full purchase amount, the parent's hash, and a credit note for a declined refund too.
+        settings(['invoiceStatus' => Settings::INVOICE_STATUS_CONCEPT, 'queuePush' => false, 'creditNotesEnabled' => true]);
+
+        $variant = makeProduct('TW-REFEV-' . StringHelper::randomString(4), 100.00)->getVariants()[0];
+        $order = makeOrder([['variant' => $variant, 'qty' => 1]]);
+
+        $make = static function(string $type, string $status, float $amount, string $hash) use ($order) {
+            $t = new craft\commerce\models\Transaction();
+            $t->orderId = $order->id;
+            $t->type = $type;
+            $t->status = $status;
+            $t->amount = $amount;
+            $t->hash = $hash;
+
+            return $t;
+        };
+
+        scriptTwinfield([
+            soapResponse('<salesinvoice result="1"><header><invoicenumber>3101</invoicenumber></header></salesinvoice>'),
+        ]);
+
+        $transactions = Commerce::getInstance()->getTransactions();
+        foreach ([
+            $make('purchase', 'success', 100.00, 'ev-purchase'),
+            $make('refund', 'failed', 40.00, 'ev-refund-failed'),
+            $make('refund', 'success', 40.00, 'ev-refund-ok'),
+        ] as $t) {
+            $transactions->trigger(
+                craft\commerce\services\Transactions::EVENT_AFTER_SAVE_TRANSACTION,
+                new craft\commerce\events\TransactionEvent(['transaction' => $t]),
+            );
+        }
+
+        $credits = array_values(array_filter(
+            $plugin->getSync()->getDocumentsForOrder($order->id),
+            static fn(Document $d) => $d->isCreditNote(),
+        ));
+
+        if (count($credits) !== 1) {
+            return count($credits) . ' credit notes';
+        }
+
+        return ($credits[0]->sourceKey === 'refund:ev-refund-ok' && Amounts::equal(abs((float)$credits[0]->valueTotal), 40.00))
+            ?: $credits[0]->sourceKey . ' ' . $credits[0]->valueTotal;
     });
 
     check('an unconfigured install records nothing on order completion', function() {
