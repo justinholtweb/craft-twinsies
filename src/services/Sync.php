@@ -212,8 +212,8 @@ class Sync extends Component
 
         // The unique index stops a second *row*. It cannot undo a second *invoice* that Twinfield
         // has already created, which is what two workers both passing the "already sent?" check
-        // would produce. 60s is long enough for a slow Twinfield and short enough that a wedged
-        // worker does not park an order forever.
+        // would produce. The 60 is how long to *wait* for the lock, not how long it is held:
+        // Craft releases it when the holding request or job ends, however that ends.
         if (!$mutex->acquire($lock, 60)) {
             $this->fail($document, 'Another process is already posting this order.');
 
@@ -426,6 +426,11 @@ class Sync extends Component
      */
     public function findUnposted(int $limit = 50, ?DateTime $since = null): array
     {
+        // Same guard as the trigger: an unconfigured plugin queues nothing that cannot succeed.
+        if (!Plugin::getInstance()->isConfigured()) {
+            return [];
+        }
+
         $query = Order::find()
             ->isCompleted(true)
             ->status(null)
@@ -436,15 +441,11 @@ class Sync extends Component
             $query->dateOrdered('>= ' . $since->format('Y-m-d H:i:s'));
         }
 
-        $posted = (new Query())
+        // A subquery rather than every posted id pulled into PHP and sent back as an IN list.
+        $query->andWhere(['not in', 'elements.id', (new Query())
             ->select(['orderId'])
             ->from([Table::DOCUMENTS])
-            ->where(['kind' => Document::KIND_INVOICE])
-            ->column();
-
-        if ($posted) {
-            $query->andWhere(['not', ['elements.id' => $posted]]);
-        }
+            ->where(['kind' => Document::KIND_INVOICE])]);
 
         return $query->all();
     }

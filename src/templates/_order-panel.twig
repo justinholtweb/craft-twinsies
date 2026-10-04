@@ -25,7 +25,7 @@
                 </p>
 
                 {% if invoice.openValue is not null and not invoice.isPaid() %}
-                    <p class="light">{{ 'Open: {value}'|t('twinsies', { value: invoice.openValue|number_format(2) }) }}</p>
+                    <p class="light">{{ 'Open: {value}'|t('twinsies', { value: invoice.openValue|currency(invoice.currency ?: order.currency) }) }}</p>
                 {% endif %}
 
                 {% if invoice.lastError %}
@@ -39,7 +39,7 @@
                 <p>
                     <span class="status {{ credit.getStatusColour() }}"></span>
                     <a href="{{ url('twinsies/documents/' ~ credit.id) }}">{{ 'Credit note'|t('twinsies') }}</a>
-                    <span class="light">{{ credit.valueTotal ? credit.valueTotal|number_format(2) : '' }}</span>
+                    <span class="light">{{ credit.valueTotal ? credit.valueTotal|abs|currency(credit.currency ?: order.currency) : '' }}</span>
                 </p>
             {% endfor %}
 

@@ -165,6 +165,7 @@ class Install extends Migration
         $this->createIndex(null, Table::LOG, ['level'], false);
         $this->createIndex(null, Table::LOG, ['dateCreated'], false);
         $this->createIndex(null, Table::LOG, ['documentId'], false);
+        $this->createIndex(null, Table::LOG, ['orderId'], false);
     }
 
     private function addForeignKeys(): void

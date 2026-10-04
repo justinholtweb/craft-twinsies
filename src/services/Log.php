@@ -178,7 +178,9 @@ class Log extends Component
             return $payload;
         }
 
-        return substr($payload, 0, self::MAX_PAYLOAD) . "\n…[truncated]";
+        // `mb_strcut`, not `substr`: a cut through the middle of a multibyte character is invalid
+        // UTF-8, which MySQL refuses — and the log entry for the failure being logged is lost.
+        return mb_strcut($payload, 0, self::MAX_PAYLOAD, 'UTF-8') . "\n…[truncated]";
     }
 
     /**

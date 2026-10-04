@@ -88,6 +88,14 @@ class MappingController extends Controller
         $saved = 0;
 
         foreach ((array)$posted as $mapKey => $values) {
+            if (!is_array($values)) {
+                continue;
+            }
+
+            // A tampered post can nest arrays where strings belong; `(string)` on one is a warning
+            // and the literal "Array" as an article code.
+            $values = array_filter($values, 'is_scalar');
+
             $map = new ArticleMap([
                 'office' => $office,
                 'mapKey' => (string)$mapKey,
