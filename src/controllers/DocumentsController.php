@@ -8,6 +8,7 @@ use craft\web\Controller;
 use justinholtweb\twinsies\helpers\Xml;
 use justinholtweb\twinsies\models\Document;
 use justinholtweb\twinsies\Plugin;
+use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -29,6 +30,9 @@ class DocumentsController extends Controller
 
         $this->requireCpRequest();
 
+        // These screens list customers' emails, totals and addresses, and build documents that
+        // carry them, so they need Commerce's own order permission as well as Twinsies'.
+        $this->requirePermission('commerce-manageOrders');
         $this->requirePermission('twinsies-viewDocuments');
 
         return true;
@@ -70,9 +74,12 @@ class DocumentsController extends Controller
             throw new NotFoundHttpException('Document not found.');
         }
 
+        $order = $document->getOrder();
+        $this->requireCanView($order);
+
         return $this->renderTemplate('twinsies/documents/_detail', [
             'document' => $document,
-            'order' => $document->getOrder(),
+            'order' => $order,
             'entries' => Plugin::getInstance()->getLog()->getEntries(['documentId' => $documentId], 25),
             'canPush' => Craft::$app->getUser()->checkPermission('twinsies-pushDocuments'),
         ]);
@@ -103,6 +110,8 @@ class DocumentsController extends Controller
         if ($order === null) {
             return $this->asJson(['ok' => false, 'message' => Craft::t('twinsies', 'Order not found.')]);
         }
+
+        $this->requireCanView($order);
 
         try {
             $built = Plugin::getInstance()->getDocuments()->build($order, $kind, dryRun: true);
@@ -144,6 +153,8 @@ class DocumentsController extends Controller
                 return $this->failure(Craft::t('twinsies', 'Document not found.'));
             }
 
+            $this->requireCanView($document->getOrder());
+
             if ($queue) {
                 $sync->enqueue($document);
 
@@ -164,6 +175,8 @@ class DocumentsController extends Controller
         if ($order === null) {
             return $this->failure(Craft::t('twinsies', 'Order not found.'));
         }
+
+        $this->requireCanView($order);
 
         $document = $sync->pushOrder($order, $force, $queue);
 
@@ -234,9 +247,25 @@ class DocumentsController extends Controller
             return $this->failure(Craft::t('twinsies', 'Document not found.'));
         }
 
+        $this->requireCanView($document->getOrder());
+
         Plugin::getInstance()->getSync()->delete($document);
 
         return $this->success(Craft::t('twinsies', 'Document record removed. Nothing was changed in Twinfield.'));
+    }
+
+    /**
+     * Commerce's per-order view permission, on top of the screen-level ones. A document whose
+     * order is gone is allowed through: there is nothing left to protect, and it still needs
+     * cleaning up.
+     *
+     * @throws ForbiddenHttpException
+     */
+    private function requireCanView(?Order $order): void
+    {
+        if ($order !== null && !Craft::$app->getElements()->canView($order, Craft::$app->getUser()->getIdentity())) {
+            throw new ForbiddenHttpException('User not authorized to view this order.');
+        }
     }
 
     private function success(string $message): Response

@@ -25,6 +25,17 @@ The **Documents** screen lists everything Twinsies has posted or tried to post, 
 
 A failed document keeps the reason Twinfield gave, down to the field it objected to.
 
+### Who can see what
+
+| Permission | Allows |
+| --- | --- |
+| **View Twinfield documents** | The Documents screen and the order panel. Also needs Commerce's **Manage orders**, and only shows orders the user can view in Commerce. |
+| ↳ **Post documents to Twinfield** | Preview XML, Post, Post again, Retry failed, Post unposted orders |
+| **Manage article and ledger mapping** | The Mapping screen |
+| **View the Twinfield connection log** | The Log screen. Request and response bodies include customer names and addresses. |
+
+Settings and connecting to Twinfield are for admins only.
+
 ### Posting a backlog
 
 **Post unposted orders** on the Documents screen queues completed orders that have no document yet.

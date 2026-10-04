@@ -209,7 +209,9 @@ class Plugin extends BasePlugin
         $user = Craft::$app->getUser();
         $subNav = [];
 
-        if ($user->checkPermission('twinsies-viewDocuments')) {
+        // The Documents screens list customers, totals and addresses, so they need Commerce's own
+        // order permission as well as Twinsies'.
+        if ($user->checkPermission('twinsies-viewDocuments') && $user->checkPermission('commerce-manageOrders')) {
             $subNav['documents'] = [
                 'label' => Craft::t('twinsies', 'Documents'),
                 'url' => 'twinsies/documents',
@@ -239,6 +241,12 @@ class Plugin extends BasePlugin
 
         if (!$subNav) {
             return null;
+        }
+
+        // The section's own URL is the Documents screen; someone who cannot see it lands on the
+        // first screen they can.
+        if (!isset($subNav['documents'])) {
+            $item['url'] = reset($subNav)['url'];
         }
 
         $item['subnav'] = $subNav;
