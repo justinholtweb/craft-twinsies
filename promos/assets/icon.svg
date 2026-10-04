@@ -1,14 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Twinsies">
-    <!-- Two identical sheets, one behind the other: what Twinsies keeps true — the order in
-         Craft and the document in Twinfield are the same thing, twice. -->
-    <g transform="rotate(-7 50 50)">
-        <rect x="16" y="14" width="50" height="64" rx="6" fill="#9EC6EC"/>
-    </g>
-    <g transform="rotate(6 50 50)">
-        <rect x="34" y="22" width="50" height="64" rx="6" fill="#1B5FA8"/>
-        <rect x="43" y="35" width="32" height="5" rx="2.5" fill="#FFFFFF" opacity="0.92"/>
-        <rect x="43" y="47" width="32" height="5" rx="2.5" fill="#FFFFFF" opacity="0.7"/>
-        <rect x="43" y="59" width="20" height="5" rx="2.5" fill="#FFFFFF" opacity="0.7"/>
-        <rect x="43" y="71" width="26" height="5" rx="2.5" fill="#F0A22E"/>
-    </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Twinsies">
+  <!-- Family tile: 22.44% radius, accent fill, white filled glyph — the abacus/bird convention.
+       #007AC3 is Wolters Kluwer's brand blue, the house Twinfield is sold under. -->
+  <rect x="0" y="0" width="100" height="100" rx="22.44" fill="#007AC3"/>
+  <!-- Two identical sheets, one offset behind the other: the order in Craft and the document in
+       Twinfield, the same thing twice. The back sheet is cut away around the front one rather than
+       drawn underneath it, so the pair survives as one colour in icon-mask.svg. The punched lines
+       are what stop it reading as the generic "copy" glyph. -->
+  <g fill="#FEFEFE" fill-rule="evenodd">
+    <path d="M23 12H53A7 7 0 0 1 60 19V27H47A12 12 0 0 0 35 39V68H23A7 7 0 0 1 16 61V19A7 7 0 0 1 23 12ZM23 18h29v5h-29Z"/>
+    <path d="M47 32H77A7 7 0 0 1 84 39V81A7 7 0 0 1 77 88H47A7 7 0 0 1 40 81V39A7 7 0 0 1 47 32ZM48 42h28v5h-28ZM48 53h28v5h-28ZM48 64h18v5h-18ZM48 75h24v5h-24Z"/>
+  </g>
 </svg>
