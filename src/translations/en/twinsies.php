@@ -334,6 +334,7 @@ return [
     'Zero-rate VAT code' => 'Zero-rate VAT code',
     'cluster' => 'cluster',
     '{checked} checked, {paid} newly paid' => '{checked} checked, {paid} newly paid',
+    '{code} (not in the list from Twinfield)' => '{code} (not in the list from Twinfield)',
     '{count} document(s) queued.' => '{count} document(s) queued.',
     '{count} log entries deleted.' => '{count} log entries deleted.',
     '{count} mapping(s) saved.' => '{count} mapping(s) saved.',

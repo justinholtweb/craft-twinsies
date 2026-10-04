@@ -189,6 +189,39 @@ class Meta extends Component
     }
 
     /**
+     * Options that are sure to include the stored value.
+     *
+     * A select whose value is not among its options falls back to the first one — the blank — and
+     * the next save writes that back. A code missing from a list that came back short, or from no
+     * list at all because Twinfield was unreachable, would be erased by someone saving an
+     * unrelated setting. It is kept, and labelled as not found.
+     *
+     * @param array<int, array{label: string, value: string}> $options
+     * @return array<int, array{label: string, value: string}>
+     */
+    public function withValue(array $options, mixed $value): array
+    {
+        $value = (string)$value;
+
+        if ($value === '') {
+            return $options;
+        }
+
+        foreach ($options as $option) {
+            if ((string)$option['value'] === $value) {
+                return $options;
+            }
+        }
+
+        $options[] = [
+            'label' => Craft::t('twinsies', '{code} (not in the list from Twinfield)', ['code' => $value]),
+            'value' => $value,
+        ];
+
+        return $options;
+    }
+
+    /**
      * A catalogue, or an empty array if Twinfield cannot be reached.
      *
      * The settings screen calls this rather than the typed getters: a plugin whose settings page

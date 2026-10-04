@@ -2315,6 +2315,21 @@ try {
         return (!$result['ok'] && str_contains($result['message'], '999')) ?: json_encode($result);
     });
 
+    check('a stored code missing from the list stays selectable', function() {
+        global $plugin;
+        // A select whose value is not among its options saves back as blank — a daybook or ledger
+        // account lost because a catalogue came back short, or not at all.
+        $meta = $plugin->getMeta();
+        $options = $meta->toOptions(['VRK' => 'Verkoop'], '—');
+
+        $kept = $meta->withValue($options, 'MEMO');
+        $same = $meta->withValue($options, 'VRK');
+        $blank = $meta->withValue($options, '');
+
+        return (count($kept) === 3 && end($kept)['value'] === 'MEMO' && count($same) === 2 && count($blank) === 2)
+            ?: json_encode($kept);
+    });
+
     check('options are shaped for Craft’s form macros', function() {
         global $plugin;
         $options = $plugin->getMeta()->toOptions(['001' => 'Fixture BV'], '—');

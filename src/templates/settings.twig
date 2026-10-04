@@ -113,7 +113,7 @@
         instructions: 'The Twinfield administration everything posts into.'|t('twinsies'),
         id: 'office',
         name: 'office',
-        options: officeOptions,
+        options: meta.withValue(officeOptions, settings.office),
         value: settings.office
     }) }}
 {% else %}
@@ -209,7 +209,7 @@
             label: 'Invoice type'|t('twinsies'),
             id: 'invoiceType',
             name: 'invoiceType',
-            options: invoiceTypeOptions,
+            options: meta.withValue(invoiceTypeOptions, settings.invoiceType),
             value: settings.invoiceType
         }) }}
     {% else %}
@@ -239,7 +239,7 @@
         instructions: 'The bank the invoice asks to be paid into.'|t('twinsies'),
         id: 'bank',
         name: 'bank',
-        options: bankOptions,
+        options: meta.withValue(bankOptions, settings.bank),
         value: settings.bank
     }) }}
 
@@ -294,7 +294,7 @@
             label: 'Daybook'|t('twinsies'),
             id: 'daybook',
             name: 'daybook',
-            options: daybookOptions,
+            options: meta.withValue(daybookOptions, settings.daybook),
             value: settings.daybook
         }) }}
     {% else %}
@@ -324,7 +324,7 @@
         instructions: 'Balance sheet account for trade debtors — the total line books here, e.g. `1300`.'|t('twinsies'),
         id: 'debtorGl',
         name: 'debtorGl',
-        options: balanceOptions,
+        options: meta.withValue(balanceOptions, settings.debtorGl),
         value: settings.debtorGl
     }) }}
 
@@ -350,7 +350,7 @@
             label: 'VAT account'|t('twinsies'),
             id: 'vatGl',
             name: 'vatGl',
-            options: balanceOptions,
+            options: meta.withValue(balanceOptions, settings.vatGl),
             value: settings.vatGl
         }) }}
     </div>
@@ -468,7 +468,7 @@
     label: 'Default article'|t('twinsies'),
     id: 'defaultArticle',
     name: 'defaultArticle',
-    options: articleOptions,
+    options: meta.withValue(articleOptions, settings.defaultArticle),
     value: settings.defaultArticle
 }) }}
 
@@ -477,7 +477,7 @@
     instructions: 'Twinfield `dim1` for lines with no more specific mapping, e.g. `8000`.'|t('twinsies'),
     id: 'defaultRevenueGl',
     name: 'defaultRevenueGl',
-    options: revenueOptions,
+    options: meta.withValue(revenueOptions, settings.defaultRevenueGl),
     value: settings.defaultRevenueGl
 }) }}
 
@@ -485,7 +485,7 @@
     label: 'Shipping article'|t('twinsies'),
     id: 'shippingArticle',
     name: 'shippingArticle',
-    options: articleOptions,
+    options: meta.withValue(articleOptions, settings.shippingArticle),
     value: settings.shippingArticle
 }) }}
 
@@ -493,7 +493,7 @@
     label: 'Shipping revenue account'|t('twinsies'),
     id: 'shippingGl',
     name: 'shippingGl',
-    options: revenueOptions,
+    options: meta.withValue(revenueOptions, settings.shippingGl),
     value: settings.shippingGl
 }) }}
 
@@ -501,7 +501,7 @@
     label: 'Discount article'|t('twinsies'),
     id: 'discountArticle',
     name: 'discountArticle',
-    options: articleOptions,
+    options: meta.withValue(articleOptions, settings.discountArticle),
     value: settings.discountArticle
 }) }}
 
@@ -509,7 +509,7 @@
     label: 'Discount account'|t('twinsies'),
     id: 'discountGl',
     name: 'discountGl',
-    options: revenueOptions,
+    options: meta.withValue(revenueOptions, settings.discountGl),
     value: settings.discountGl
 }) }}
 
@@ -596,7 +596,7 @@
     instructions: 'For lines that carry no tax at all — zero-rated exports and reverse-charged intra-EU sales both look like zero here, and both need a real code.'|t('twinsies'),
     id: 'zeroVatCode',
     name: 'zeroVatCode',
-    options: vatOptions,
+    options: meta.withValue(vatOptions, settings.zeroVatCode),
     value: settings.zeroVatCode
 }) }}
 
@@ -605,7 +605,7 @@
     instructions: 'Used when nothing above matches.'|t('twinsies'),
     id: 'defaultVatCode',
     name: 'defaultVatCode',
-    options: vatOptions,
+    options: meta.withValue(vatOptions, settings.defaultVatCode),
     value: settings.defaultVatCode
 }) }}
 
@@ -695,7 +695,7 @@
     instructions: 'Leave empty to reuse the sales invoice type with negative amounts, which is what an office with no dedicated credit type needs.'|t('twinsies'),
     id: 'creditInvoiceType',
     name: 'creditInvoiceType',
-    options: invoiceTypeOptions,
+    options: meta.withValue(invoiceTypeOptions, settings.creditInvoiceType),
     value: settings.creditInvoiceType
 }) }}
 
@@ -704,7 +704,7 @@
     instructions: 'Leave empty to reuse the sales daybook with the debit and credit sides reversed.'|t('twinsies'),
     id: 'creditDaybook',
     name: 'creditDaybook',
-    options: daybookOptions,
+    options: meta.withValue(daybookOptions, settings.creditDaybook),
     value: settings.creditDaybook
 }) }}
 

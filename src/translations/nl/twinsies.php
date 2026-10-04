@@ -333,6 +333,7 @@ return [
     'Zero-rate VAT code' => 'Btw-code voor 0%',
     'cluster' => 'cluster',
     '{checked} checked, {paid} newly paid' => '{checked} gecontroleerd, {paid} nieuw betaald',
+    '{code} (not in the list from Twinfield)' => '{code} (niet in de lijst van Twinfield)',
     '{count} document(s) queued.' => '{count} document(en) in de wachtrij gezet.',
     '{count} log entries deleted.' => '{count} logregels verwijderd.',
     '{count} mapping(s) saved.' => '{count} koppeling(en) opgeslagen.',
