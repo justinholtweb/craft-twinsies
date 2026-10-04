@@ -39,6 +39,12 @@ use yii\db\IntegrityException;
 class Sync extends Component
 {
     /**
+     * Whether the last failed push was Twinfield being busy or unreachable rather than refusing
+     * the document. Read by {@see PushDocument::canRetry()}.
+     */
+    private bool $lastFailureTransient = false;
+
+    /**
      * @throws \Throwable
      */
     public function getDocument(int $orderId, string $sourceKey = Document::KIND_INVOICE): ?Document
@@ -263,7 +269,13 @@ class Sync extends Component
                 $document->id,
             );
         } catch (\Throwable $e) {
-            $this->fail($document, $e->getMessage(), $built, $e instanceof TwinfieldException && $e->unconfirmed);
+            $this->fail(
+                $document,
+                $e->getMessage(),
+                $built,
+                park: $e instanceof TwinfieldException && $e->unconfirmed,
+                transient: $e instanceof TwinfieldException && $e->retryable,
+            );
 
             return false;
         }
@@ -334,6 +346,11 @@ class Sync extends Component
         $this->push($document, false, $amount);
 
         return $this->getDocumentById($document->id) ?? $document;
+    }
+
+    public function lastFailureWasTransient(): bool
+    {
+        return $this->lastFailureTransient;
     }
 
     // Triggers
@@ -507,11 +524,15 @@ class Sync extends Component
     }
 
     /**
+     * @param bool $transient Twinfield was busy or unreachable, rather than saying no — the only
+     * kind of failure the queue job tries again.
      * @param bool $park take the document out of automatic retries — for a write Twinfield may
      * have accepted, which only a person who has checked Twinfield should send again.
      */
-    private function fail(Document $document, string $message, ?BuiltDocument $built = null, bool $park = false): void
+    private function fail(Document $document, string $message, ?BuiltDocument $built = null, bool $park = false, bool $transient = false): void
     {
+        $this->lastFailureTransient = $transient;
+
         // Shown to anyone who can view documents — never the place for a token.
         $message = Plugin::getInstance()->getLog()->redact($message);
         $attempts = $document->attempts + 1;

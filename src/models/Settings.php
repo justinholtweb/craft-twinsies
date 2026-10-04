@@ -64,7 +64,8 @@ class Settings extends Model
     public int $timeout = 30;
 
     /**
-     * How many times a failed push is retried before the document is parked as failed.
+     * How many times a push is tried while Twinfield is busy or unreachable. A refusal is never
+     * retried by a machine, and nor is a write Twinfield may already have accepted.
      */
     public int $maxAttempts = 3;
 

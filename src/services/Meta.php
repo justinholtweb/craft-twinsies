@@ -20,6 +20,11 @@ use justinholtweb\twinsies\Plugin;
  */
 class Meta extends Component
 {
+    /**
+     * Set once a catalogue has failed to load in this request; see {@see safely()}.
+     */
+    private bool $unreachable = false;
+
     public const CACHE_DURATION = 3600;
 
     /** Search the code and the name. */
@@ -193,6 +198,12 @@ class Meta extends Component
      */
     public function safely(string $catalogue, bool $refresh = false): array
     {
+        // The settings page asks for eight catalogues in a row, and each failure can cost
+        // `timeout × maxAttempts`. Once one has failed in this request, the rest are not asked.
+        if ($this->unreachable) {
+            return [];
+        }
+
         try {
             return match ($catalogue) {
                 'offices' => $this->getOffices($refresh),
@@ -207,6 +218,7 @@ class Meta extends Component
             };
         } catch (\Throwable $e) {
             Craft::info("Twinsies could not load the {$catalogue} catalogue: " . $e->getMessage(), __METHOD__);
+            $this->unreachable = true;
 
             return [];
         }
@@ -218,6 +230,8 @@ class Meta extends Component
      */
     public function flush(): void
     {
+        $this->unreachable = false;
+
         foreach (self::CATALOGUES as $key) {
             Craft::$app->getCache()->delete($this->cacheKey($key));
         }

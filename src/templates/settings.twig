@@ -104,7 +104,10 @@
     suggestEnvVars: true
 }) }}
 
-{% if officeOptions|length > 1 %}
+{# An office set as `$TWINFIELD_OFFICE` matches none of the listed codes, so a select would quietly
+   fall back to the placeholder and the next save would blank it — and with no office, syncing
+   stops without a word. Keep the free-text field for an environment variable. #}
+{% if officeOptions|length > 1 and settings.office[:1] != '$' %}
     {{ forms.selectField({
         label: 'Office'|t('twinsies'),
         instructions: 'The Twinfield administration everything posts into.'|t('twinsies'),
@@ -136,7 +139,7 @@
 
 {{ forms.textField({
     label: 'Attempts'|t('twinsies'),
-    instructions: 'How many times a failed document is retried before it is parked.'|t('twinsies'),
+    instructions: 'How many times a document is tried while Twinfield is busy or unreachable. A document Twinfield refuses is not tried again until you post it again.'|t('twinsies'),
     id: 'maxAttempts',
     name: 'maxAttempts',
     type: 'number',

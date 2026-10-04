@@ -12,6 +12,7 @@ use craft\commerce\records\Transaction as TransactionRecord;
 use craft\commerce\services\Transactions;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
+use craft\services\Gc;
 use craft\services\UserPermissions;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
@@ -94,6 +95,7 @@ class Plugin extends BasePlugin
         $this->_registerTwigVariable();
         $this->_registerPermissions();
         $this->_registerCpRoutes();
+        $this->_registerGarbageCollection();
 
         // The plugin can be installed while Commerce is disabled or mid-upgrade, and everything
         // below touches an order.
@@ -103,7 +105,10 @@ class Plugin extends BasePlugin
 
         $this->_registerOrderTriggers();
         $this->_registerRefundTrigger();
-        $this->_registerOrderEditPanel();
+        if (Craft::$app->getRequest()->getIsCpRequest()) {
+            $this->_registerOrderEditPanel();
+        }
+
         $this->_registerReconcileSweep();
     }
 
@@ -380,27 +385,49 @@ class Plugin extends BasePlugin
     }
 
     /**
+     * Apply the log retention setting whenever Craft collects garbage, rather than only when
+     * someone presses the button. Request and response bodies carry customer names and addresses.
+     */
+    private function _registerGarbageCollection(): void
+    {
+        Event::on(Gc::class, Gc::EVENT_RUN, function() {
+            try {
+                $this->getLog()->prune();
+            } catch (\Throwable $e) {
+                Craft::warning('Twinsies could not prune its log: ' . $e->getMessage(), __METHOD__);
+            }
+        });
+    }
+
+    /**
      * Twinsies' panel on Commerce's own order edit screen.
      */
     private function _registerOrderEditPanel(): void
     {
         Craft::$app->getView()->hook('cp.commerce.order.edit.details', function(array &$context) {
-            $order = $context['order'] ?? null;
+            // A broken panel must never take Commerce's own order screen down with it.
+            try {
+                $order = $context['order'] ?? null;
 
-            if (!$order instanceof Order || !$order->id) {
+                if (!$order instanceof Order || !$order->id) {
+                    return null;
+                }
+
+                if (!Craft::$app->getUser()->checkPermission('twinsies-viewDocuments')) {
+                    return null;
+                }
+
+                return Craft::$app->getView()->renderTemplate('twinsies/_order-panel', [
+                    'order' => $order,
+                    'documents' => $this->getSync()->getDocumentsForOrder($order->id),
+                    'canPush' => Craft::$app->getUser()->checkPermission('twinsies-pushDocuments'),
+                    'settings' => $this->getSettings(),
+                ], View::TEMPLATE_MODE_CP);
+            } catch (\Throwable $e) {
+                Craft::warning('Twinsies could not render its order panel: ' . $e->getMessage(), __METHOD__);
+
                 return null;
             }
-
-            if (!Craft::$app->getUser()->checkPermission('twinsies-viewDocuments')) {
-                return null;
-            }
-
-            return Craft::$app->getView()->renderTemplate('twinsies/_order-panel', [
-                'order' => $order,
-                'documents' => $this->getSync()->getDocumentsForOrder($order->id),
-                'canPush' => Craft::$app->getUser()->checkPermission('twinsies-pushDocuments'),
-                'settings' => $this->getSettings(),
-            ], View::TEMPLATE_MODE_CP);
         });
     }
 
@@ -417,20 +444,20 @@ class Plugin extends BasePlugin
             Application::class,
             Application::EVENT_AFTER_REQUEST,
             static function() {
-                $plugin = Plugin::getInstance();
-
-                if ($plugin === null || !$plugin->getSettings()->canReconcile()) {
-                    return;
-                }
-
-                $cache = Craft::$app->getCache();
-
-                // `add()` only succeeds if the key is absent, which makes the throttle atomic.
-                if (!$cache->add(self::RECONCILE_CACHE_KEY, 1, max(300, $plugin->getSettings()->reconcileIntervalMinutes * 60))) {
-                    return;
-                }
-
+                // This runs after every request, checkout included — the cache backend failing
+                // here must not turn a completed payment into a 500.
                 try {
+                    $plugin = Plugin::getInstance();
+
+                    if ($plugin === null || !$plugin->getSettings()->canReconcile()) {
+                        return;
+                    }
+
+                    // `add()` only succeeds if the key is absent, which makes the throttle atomic.
+                    if (!Craft::$app->getCache()->add(self::RECONCILE_CACHE_KEY, 1, max(300, $plugin->getSettings()->reconcileIntervalMinutes * 60))) {
+                        return;
+                    }
+
                     Craft::$app->getQueue()->push(new ReconcilePayments());
                 } catch (\Throwable $e) {
                     Craft::warning('Twinsies could not queue a reconciliation sweep: ' . $e->getMessage(), __METHOD__);

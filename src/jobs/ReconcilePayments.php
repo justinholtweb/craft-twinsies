@@ -5,11 +5,12 @@ namespace justinholtweb\twinsies\jobs;
 use Craft;
 use craft\queue\BaseJob;
 use justinholtweb\twinsies\Plugin;
+use yii\queue\RetryableJobInterface;
 
 /**
  * Ask Twinfield which open documents have been paid.
  */
-class ReconcilePayments extends BaseJob
+class ReconcilePayments extends BaseJob implements RetryableJobInterface
 {
     public ?int $limit = null;
 
@@ -26,6 +27,23 @@ class ReconcilePayments extends BaseJob
             'checked' => $result['checked'],
             'paid' => $result['paid'],
         ]));
+    }
+
+    /**
+     * A sweep reads up to `reconcileBatchSize` transactions one at a time; 300 seconds is not
+     * enough for a large batch on a slow day.
+     */
+    public function getTtr(): int
+    {
+        return 3600;
+    }
+
+    /**
+     * The next scheduled sweep is the retry.
+     */
+    public function canRetry($attempt, $error): bool
+    {
+        return false;
     }
 
     /**

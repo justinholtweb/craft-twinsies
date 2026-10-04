@@ -42,7 +42,13 @@ Post a few first and check them in Twinfield before doing the lot.
 ## What happens if Twinfield is down during checkout?
 
 Nothing the customer sees. The trigger catches everything, and posting through the queue is on by
-default — the order completes, and the document is parked for a retry.
+default — the order completes, and the queue job tries the document again while Twinfield is
+unreachable, up to the **Attempts** setting. Anything still failing stays on the Documents screen
+as failed, and **Post now** on the document sends it when Twinfield is back.
+
+One exception: if the connection drops *after* Twinfield received a document, Twinsies cannot know
+whether it was posted, so it does not send it again by itself. The document says so — check
+Twinfield, then post it again if it is not there.
 
 Twinsies will never let an accounting system stop someone paying.
 
