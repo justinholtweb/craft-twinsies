@@ -54,7 +54,6 @@ class Document extends Model
     public ?DateTime $dateReconciled = null;
     public int $attempts = 0;
     public ?string $lastError = null;
-    public ?int $lastLogId = null;
     public ?DateTime $dateCreated = null;
     public ?DateTime $dateUpdated = null;
     public ?string $uid = null;
@@ -200,7 +199,6 @@ class Document extends Model
             'payloadHash' => $this->payloadHash,
             'attempts' => $this->attempts,
             'lastError' => $this->lastError,
-            'lastLogId' => $this->lastLogId,
         ];
     }
 }

@@ -55,7 +55,7 @@ class Plugin extends BasePlugin
      */
     private const RECONCILE_CACHE_KEY = 'twinsies:reconcile:next';
 
-    public string $schemaVersion = '5.0.0';
+    public string $schemaVersion = '5.0.1';
     public bool $hasCpSettings = true;
     /**
      * Where admin changes are off, Craft renders the settings read-only rather than refusing the

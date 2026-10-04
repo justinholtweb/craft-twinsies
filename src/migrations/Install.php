@@ -73,7 +73,6 @@ class Install extends Migration
             'dateReconciled' => $this->dateTime(),
             'attempts' => $this->integer()->notNull()->defaultValue(0),
             'lastError' => $this->text(),
-            'lastLogId' => $this->integer(),
             'dateCreated' => $this->dateTime()->notNull(),
             'dateUpdated' => $this->dateTime()->notNull(),
             'uid' => $this->uid(),

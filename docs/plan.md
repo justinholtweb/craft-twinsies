@@ -90,17 +90,14 @@ regression checks where the suite can reach it (162 checks):
   sweep; settings page stops after one unreachable catalogue; env-var office kept as text; errors
   translated.
 
-Known, deliberately deferred:
+Followed up the same day, from the items first deferred:
 
-- `Reconcile` records the Commerce payment as the outstanding amount in the order currency and
-  ignores `paymentRate` — fine for single-currency shops, wrong for a store that takes payment in
-  another currency.
-- The Documents screen needs only `twinsies-*` permissions; Sager also requires
-  `commerce-manageOrders` and `canView($order)`.
-- The non-office selects (invoice type, daybook, ledger accounts, VAT, bank) still fall back to the
-  placeholder if a stored code is missing from the fetched list, so a save while a catalogue is
-  short would blank it.
-- `twinsies_documents.lastLogId` is never written.
+- **"Mark the order paid" never worked** — it used `TransactionRecord::TYPE_PAYMENT`, which Commerce
+  5 does not have. Now a purchase transaction, with the amounts and rate Commerce itself computes,
+  so an order paid in another currency records the right payment.
+- The Documents screens need `commerce-manageOrders` and `canView()` on the order, as Sager's do.
+- Catalogue-fed selects keep a stored code missing from Twinfield's list instead of blanking it.
+- `twinsies_documents.lastLogId`, never written, is dropped (migration, schema `5.0.1`).
 
 ## Still to do
 
