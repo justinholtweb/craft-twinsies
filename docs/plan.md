@@ -39,7 +39,7 @@ Taken 2026-08-20:
       four console controllers, Twig variable.
 - [x] **10 — Verification.** 155 integration checks against a scripted Twinfield; control panel
       smoke-tested with a real session; settings round-trip through project config confirmed.
-- [x] **11 — Dutch.** All 296 strings translated in Twinfield's own vocabulary, verified by
+- [x] **11 — Dutch.** All 330 strings translated in Twinfield's own vocabulary, verified by
       `tests/tools/translations.php` (placeholders and code spans exact, emphasis runs balanced)
       and rendered end to end with the control panel set to `nl`.
 - [x] **12 — Release prep.** Five docs pages with front matter, seven Plugin Store promo slides,
@@ -69,9 +69,44 @@ Two smaller unknowns to settle in the same pass:
   credit type is configured. Whether a given office prefers a dedicated credit type is a per-office
   question; both paths are implemented but only the negative-amount path is obvious.
 
+## Launch prep (2026-10-04)
+
+A security audit and a release review against Sager's and Exactly's launch prep. Fixed, with
+regression checks where the suite can reach it (162 checks):
+
+- The refund trigger read the **parent purchase** off `EVENT_AFTER_REFUND_TRANSACTION`. Now
+  `Transactions::EVENT_AFTER_SAVE_TRANSACTION`, successful refunds only.
+- `ProcessXmlString` was retried on a read timeout or a 500/504, which could post an invoice twice.
+  Writes now resend only when nothing left (resolve/connect/TLS) or on 429/503; otherwise the
+  document is failed as *may have posted* and parked out of automatic retries.
+- `build()` wrote the debtor and articles before it could refuse; preview wrote them too. Writes
+  now come after every refusal, and previews are dry runs.
+- A missing open value read as zero — a Commerce payment nobody made.
+- A token-validation timeout leaked the access token into `lastError`, the queue and the logs.
+- Production could not connect at all (`allowAdminChanges` gate on the OAuth flow).
+- Cluster URL pinned to https `*.twinfield.com`; literal client secrets refused; preview gated on
+  push permission; `requireCpRequest()` everywhere; AJAX buttons returned redirects axios rejects;
+  job TTRs and outage-only retries; log pruned on GC; fail-open wrappers on the panel hook and the
+  sweep; settings page stops after one unreachable catalogue; env-var office kept as text; errors
+  translated.
+
+Known, deliberately deferred:
+
+- `Reconcile` records the Commerce payment as the outstanding amount in the order currency and
+  ignores `paymentRate` — fine for single-currency shops, wrong for a store that takes payment in
+  another currency.
+- The Documents screen needs only `twinsies-*` permissions; Sager also requires
+  `commerce-manageOrders` and `canView($order)`.
+- The non-office selects (invoice type, daybook, ledger accounts, VAT, bank) still fall back to the
+  placeholder if a stored code is missing from the fetched list, so a save while a catalogue is
+  short would blank it.
+- `twinsies_documents.lastLogId` is never written.
+
 ## Still to do
 
-- [ ] **Live Twinfield run (above)** — the only thing between this and being sellable
+- [ ] **Live Twinfield run (above)** — the only thing between this and being sellable. Add to it:
+      a refund settled by gateway webhook, and Preview XML on a brand-new customer (no debtor or
+      article should appear in Twinfield until the push).
 - [ ] `git push` to a public `justinholtweb/craft-twinsies`, and push the `5.0.0` tag
 - [ ] Packagist
 - [ ] Register at `id.craftcms.com` and set the $149 price there — the price lives in the Craft
