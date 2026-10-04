@@ -2043,6 +2043,45 @@ try {
         return true;
     });
 
+    check('a payment recorded from Twinfield carries Commerce\'s own currency amounts', function() {
+        global $plugin;
+        // The payment once set amount and paymentAmount both to the store-currency balance,
+        // which is wrong for any order paid in another currency.
+        settings(['markOrderPaid' => true, 'paidOrderStatusHandle' => '']);
+
+        $variant = makeProduct('TW-PAY-' . StringHelper::randomString(4), 45.00)->getVariants()[0];
+        $order = makeOrder([['variant' => $variant, 'qty' => 1]]);
+
+        scriptTwinfield([
+            soapResponse('<salesinvoice result="1"><header><invoicenumber>5101</invoicenumber></header>'
+                . '<financials><code>VRK</code><number>202600601</number></financials></salesinvoice>'),
+            soapResponse('<transaction result="1"><header><code>VRK</code><number>202600601</number></header><lines>'
+                . '<line type="total" id="1"><dim1>1300</dim1><value>45.00</value><openvalue>0.00</openvalue><matchstatus>matched</matchstatus></line>'
+                . '</lines></transaction>'),
+        ]);
+
+        $document = $plugin->getSync()->pushOrder($order);
+        $plugin->getReconcile()->check($plugin->getSync()->getDocumentById($document->id));
+        settings(['markOrderPaid' => false]);
+
+        $payments = array_values(array_filter(
+            Commerce::getInstance()->getTransactions()->getAllTransactionsByOrderId($order->id),
+            static fn($t) => $t->type === 'purchase',
+        ));
+
+        if (!$payments) {
+            $entry = $plugin->getLog()->getEntries(['action' => 'reconcile.warning', 'orderId' => $order->id], 1)[0] ?? null;
+
+            return 'no payment recorded' . ($entry ? ': ' . $entry->summary : '');
+        }
+
+        $t = $payments[0];
+        $expected = round((float)$t->amount * (float)$t->paymentRate, 2);
+
+        return ($t->status === 'success' && Amounts::equal((float)$t->amount, 45.00) && Amounts::equal((float)$t->paymentAmount, $expected))
+            ?: "status={$t->status} amount={$t->amount} paymentAmount={$t->paymentAmount} rate={$t->paymentRate}";
+    });
+
     check('a transaction with no total line is an error, not a silent pass', function() use (&$reconcileDocument) {
         global $plugin;
         scriptTwinfield([soapResponse(

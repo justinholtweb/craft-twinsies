@@ -249,10 +249,12 @@ class Reconcile extends Component
 
         try {
             $commerce = Commerce::getInstance();
-            $transaction = $commerce->getTransactions()->createTransaction($order, null, TransactionRecord::TYPE_PAYMENT);
+            $transaction = $commerce->getTransactions()->createTransaction($order, null, TransactionRecord::TYPE_PURCHASE);
             $transaction->status = TransactionRecord::STATUS_SUCCESS;
-            $transaction->amount = $outstanding;
-            $transaction->paymentAmount = $outstanding;
+            // `amount` and `paymentAmount` are left as createTransaction() set them: the
+            // outstanding balance in the store currency and in the order's payment currency, with
+            // the rate between them. Setting both to the store-currency balance recorded the wrong
+            // payment for any order paid in another currency.
             $transaction->reference = mb_substr($document->getReference(), 0, 255);
             $transaction->note = Craft::t('twinsies', 'Matched in Twinfield');
 
