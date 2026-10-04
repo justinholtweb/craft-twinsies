@@ -2052,6 +2052,22 @@ try {
         $variant = makeProduct('TW-PAY-' . StringHelper::randomString(4), 45.00)->getVariants()[0];
         $order = makeOrder([['variant' => $variant, 'qty' => 1]]);
 
+        // Commerce will not record a transaction on an order with no gateway (an order taken on
+        // account, which Twinsies logs instead). Give this one a manual gateway, as a shop that
+        // invoices would have.
+        $gateway = null;
+        foreach (Commerce::getInstance()->getGateways()->getAllGateways() as $candidate) {
+            if ($candidate instanceof craft\commerce\gateways\Manual) {
+                $gateway = $candidate;
+                break;
+            }
+        }
+        if ($gateway === null) {
+            return 'no manual gateway in the harness';
+        }
+        Craft::$app->getDb()->createCommand()->update('{{%commerce_orders}}', ['gatewayId' => $gateway->id], ['id' => $order->id])->execute();
+        $order = Order::find()->id($order->id)->status(null)->one();
+
         scriptTwinfield([
             soapResponse('<salesinvoice result="1"><header><invoicenumber>5101</invoicenumber></header>'
                 . '<financials><code>VRK</code><number>202600601</number></financials></salesinvoice>'),
